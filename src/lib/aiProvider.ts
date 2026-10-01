@@ -22,8 +22,52 @@ interface ChatParams {
 }
 
 export async function callAICompletion(prompt: string, jsonMode = false): Promise<string | null> {
-  // 1. Google Gemini API
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const geminiRaw = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY || (geminiRaw?.startsWith('sk-or-v1-') ? geminiRaw : undefined);
+  const groqKey = process.env.GROQ_API_KEY || (geminiRaw?.startsWith('gsk_') ? geminiRaw : undefined);
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const geminiKey = geminiRaw && !geminiRaw.startsWith('sk-or-v1-') && !geminiRaw.startsWith('gsk_') ? geminiRaw : undefined;
+  const genericKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
+
+  // 1. OpenRouter (Supports DeepSeek-V3, Llama 3.3 70B, DeepSeek-R1)
+  if (openrouterKey) {
+    try {
+      const preferredModel = process.env.AI_MODEL || 'deepseek/deepseek-chat';
+      const modelsToTry = [preferredModel, 'meta-llama/llama-3.3-70b-instruct:free', 'deepseek/deepseek-chat'];
+      
+      for (const model of Array.from(new Set(modelsToTry))) {
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openrouterKey}`,
+              'HTTP-Referer': 'https://thetawave.ai',
+              'X-Title': 'ThetaWave AI'
+            },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'user', content: prompt }],
+              response_format: jsonMode ? { type: 'json_object' } : undefined,
+              temperature: 0.3
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (content) return content;
+          }
+        } catch (innerErr) {
+          console.warn(`OpenRouter model ${model} attempt failed:`, innerErr);
+        }
+      }
+    } catch (e) {
+      console.warn('OpenRouter request failed:', e);
+    }
+  }
+
+  // 2. Google Gemini API
   if (geminiKey) {
     try {
       const model = process.env.AI_MODEL || 'gemini-2.5-flash';
@@ -47,8 +91,7 @@ export async function callAICompletion(prompt: string, jsonMode = false): Promis
     }
   }
 
-  // 2. Groq Cloud (Free Open Source Llama 3.3 70B / DeepSeek R1)
-  const groqKey = process.env.GROQ_API_KEY;
+  // 3. Groq Cloud (Free Open Source Llama 3.3 70B / DeepSeek R1)
   if (groqKey) {
     try {
       const model = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
@@ -74,8 +117,7 @@ export async function callAICompletion(prompt: string, jsonMode = false): Promis
     }
   }
 
-  // 3. DeepSeek API (Ultra-cheap DeepSeek-V3 / DeepSeek-R1)
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  // 4. DeepSeek API (Ultra-cheap DeepSeek-V3 / DeepSeek-R1)
   if (deepseekKey) {
     try {
       const model = process.env.AI_MODEL || 'deepseek-chat';
@@ -101,34 +143,7 @@ export async function callAICompletion(prompt: string, jsonMode = false): Promis
     }
   }
 
-  // 4. OpenRouter API (Supports Free Models like deepseek/deepseek-r1:free)
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  if (openrouterKey) {
-    try {
-      const model = process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openrouterKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: prompt }],
-          response_format: jsonMode ? { type: 'json_object' } : undefined
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || null;
-      }
-    } catch (e) {
-      console.warn('OpenRouter request failed:', e);
-    }
-  }
-
   // 5. Generic OpenAI-Compatible or Custom Base URL
-  const genericKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
   const baseUrl = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
   if (genericKey) {
     try {
