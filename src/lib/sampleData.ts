@@ -252,3 +252,250 @@ export const defaultFolders = [
   { id: 'fld-2', name: 'Midterm Prep', color: '#f59e0b', icon: 'Folder', createdAt: '2026-09-25' },
   { id: 'fld-3', name: 'Research & Labs', color: '#10b981', icon: 'Folder', createdAt: '2026-09-30' },
 ];
+
+export const sampleLecturesMalay: LectureData[] = [
+  {
+    id: 'cs-neural-networks',
+    title: 'CS 182: Pembelajaran Mendalam & Perambatan Balik Rangkaian Neural',
+    subject: 'Sains Komputer & AI',
+    folder: 'Semester 1 Core',
+    duration: '48 minit',
+    date: '2026-10-01',
+    summary: 'Analisis menyeluruh perseptron berbilang lapisan, matematik perambatan isyarat hadapan, fungsi kerugian, dan perambatan balik melalui petua rantai multivariate dengan pengoptimuman penurunan kecerunan.',
+    markdownNotes: `# CS 182: Asas Pembelajaran Mendalam & Rangkaian Neural
+
+## 1. Ringkasan Eksekutif
+Rangkaian neural bertindak sebagai penghampir fungsi sejagat (universal function approximators) yang berupaya mempelajari pemetaan bukan linear daripada ruang input $\\mathcal{X}$ ke ruang output $\\mathcal{Y}$. Kuliah ini merangkumi perambatan isyarat hadapan, fungsi pengaktifan, metrik kos, dan terbitan matematik perambatan balik (backpropagation) menggunakan petua rantai multivariat.
+
+---
+
+## 2. Perambatan Isyarat Hadapan (Forward Propagation)
+Setiap neuron dalam lapisan $l$ mengira transformasi afin yang diikuti oleh pengaktifan bukan linear:
+
+$$z^{[l]} = W^{[l]} a^{[l-1]} + b^{[l]}$$
+$$a^{[l]} = \\sigma(z^{[l]})$$
+
+Di mana:
+* $W^{[l]} \\in \\mathbb{R}^{n_l \\times n_{l-1}}$ adalah matriks pemberat bagi lapisan $l$.
+* $b^{[l]} \\in \\mathbb{R}^{n_l}$ adalah vektor pincang (bias).
+* $a^{[0]} = x$ mewakili vektor ciri input.
+* $\\sigma(\\cdot)$ mewakili fungsi pengaktifan bukan linear.
+
+### Perbandingan Fungsi Pengaktifan Utama
+| Fungsi | Formula | Terbitan $\\sigma'(z)$ | Julat | Nota Penting |
+| :--- | :--- | :--- | :--- | :--- |
+| **Sigmoid** | $\\frac{1}{1 + e^{-z}}$ | $\\sigma(z)(1 - \\sigma(z))$ | $(0, 1)$ | Masalah kecerunan lenyap pada lapisan dalam |
+| **ReLU** | $\\max(0, z)$ | $1$ jika $z > 0$ sebaliknya $0$ | $[0, \\infty)$ | Sangat cekap; mencegah pereputan kecerunan |
+| **GELU** | $z \\cdot \\Phi(z)$ | Bukan linear lancar | $(-0.17, \\infty)$ | Pilihan piawai dalam model Transformer moden |
+
+---
+
+## 3. Fungsi Kerugian & Formulasi Objektif
+Bagi pengelasan binari, kita meminimumkan kerugian entropi silang binari:
+
+$$\\mathcal{L}(y, \\hat{y}) = -\\left[ y \\log(\\hat{y}) + (1 - y) \\log(1 - \\hat{y}) \\right]$$
+
+Bagi pengelasan berbilang kelas dengan $K$ kelas:
+
+$$\\mathcal{L}_{CE} = - \\sum_{k=1}^K y_k \\log(\\hat{y}_k), \\quad \\text{di mana } \\hat{y}_k = \\frac{e^{z_k}}{\\sum_{j=1}^K e^{z_j}}$$
+
+---
+
+## 4. Terbitan Perambatan Balik (Backpropagation)
+Perambatan balik menggunakan pembezaan automatik mod undur. Isyarat ralat bagi lapisan output $L$ ialah:
+
+$$\\delta^{[L]} = \\frac{\\partial \\mathcal{L}}{\\partial z^{[L]}} = a^{[L]} - y$$
+
+Bagi lapisan tersembunyi $l = L-1, \\dots, 1$, hubungan pengulangan adalah:
+
+$$\\delta^{[l]} = \\left( (W^{[l+1]})^T \\delta^{[l+1]} \\right) \\odot \\sigma'(z^{[l]})$$
+
+Kemas kini kecerunan pemberat dan pincang:
+
+$$\\frac{\\partial \\mathcal{L}}{\\partial W^{[l]}} = \\delta^{[l]} (a^{[l-1]})^T, \\quad \\frac{\\partial \\mathcal{L}}{\\partial b^{[l]}} = \\delta^{[l]}$$
+
+---
+
+## 5. Rumusan Penting & Tip Peperiksaan
+* Sentiasa normalkan input kepada min sifar dan varians unit ($z = \\frac{x - \\mu}{\\sigma}$) untuk mengelakkan landskap kerugian Hessian yang bermasalah.
+* Gunakan pemulaan He untuk pengaktifan ReLU: $W \\sim \\mathcal{N}\\left(0, \\sqrt{\\frac{2}{n_{in}}}\\right)$.
+* Kecerunan lenyap berlaku apabila $|\\sigma'(z)| < 1$ mendarab berulang kali melalui matriks lapisan dalam.
+`,
+    mindmapMarkdown: `# Pembelajaran Mendalam & Rangkaian Neural
+## 1. Seni Bina Rangkaian
+### Lapisan Input (x)
+### Lapisan Tersembunyi
+#### Pemberat (W)
+#### Pincang / Bias (b)
+#### Fungsi Pengaktifan
+##### ReLU (max(0, z))
+##### Sigmoid (1 / (1 + e^-z))
+##### GELU
+### Lapisan Output
+#### Softmax (Pelbagai Kelas)
+#### Sigmoid (Binari)
+## 2. Perambatan Hadapan
+### Transformasi Linear: z = W*a + b
+### Pengaktifan: a = sigma(z)
+## 3. Fungsi Kerugian
+### Entropi Silang (Pengelasan)
+### MSE (Regresi)
+## 4. Perambatan Balik
+### Ralat Petua Rantai: delta = dL/dz
+### Kecerunan Pemberat: dL/dW = delta * a^T
+### Kecerunan Pincang: dL/db = delta
+### Pengoptimum: SGD / Adam
+## 5. Pengoptimuman & Regularisasi
+### Pemulaan He (He Initialization)
+### Normalisasi Kelompok (Batch Norm)
+### Dropout
+### Pereputan Kadar Pembelajaran
+`,
+    flashcards: [
+      {
+        id: 'fc-1',
+        front: 'Apakah masalah kecerunan lenyap (vanishing gradient) dan fungsi pengaktifan manakah yang mengatasinya?',
+        back: 'Kecerunan lenyap berlaku apabila kecerunan yang merambat balik menyusut secara eksponen kerana didarab melalui lapisan dengan terbitan < 1 (contohnya Sigmoid dengan terbitan maksimum 0.25). ReLU mengatasi masalah ini kerana terbitannya adalah tepat 1 untuk semua input positif.',
+        tag: 'Pengaktifan'
+      },
+      {
+        id: 'fc-2',
+        front: 'Tuliskan formula pengulangan bagi sebutan ralat delta dalam lapisan tersembunyi l semasa perambatan balik.',
+        back: 'delta^[l] = ((W^[l+1])^T * delta^[l+1]) didarabkan unsur demi unsur (Hadamard product) dengan sigma\'(z^[l]).',
+        tag: 'Matematik'
+      },
+      {
+        id: 'fc-3',
+        front: 'Mengapakah pemulaan He (Kaiming) lebih disukai berbanding Xavier bagi rangkaian yang menggunakan pengaktifan ReLU?',
+        back: 'ReLU menyifarkan purata separuh daripada input negatif (varians berkurangan separuh). Pemulaan He mengimbanginya dengan menggunakan varians 2/n_in berbanding 1/n_in, mengekalkan varians isyarat stabil merentasi lapisan dalam.',
+        tag: 'Pemulaan'
+      },
+      {
+        id: 'fc-4',
+        front: 'Apakah kecerunan output bagi gabungan fungsi Softmax dan kerugian Entropi Silang?',
+        back: 'dL/dz = p - y, iaitu perbezaan ringkas antara vektor taburan kebarangkalian yang diramal tolak vektor sasaran sebenar.',
+        tag: 'Fungsi Kerugian'
+      },
+      {
+        id: 'fc-5',
+        front: 'Apakah tujuan Normalisasi Kelompok (Batch Normalization) semasa latihan rangkaian dalam?',
+        back: 'Ia menormalkan input lapisan kepada min sifar dan varians unit bagi setiap kelompok kecil, mengurangkan anjakan kovariat dalaman, melicinkan landskap pengoptimuman, dan membolehkan kadar pembelajaran lebih tinggi.',
+        tag: 'Regularisasi'
+      }
+    ],
+    quiz: [
+      {
+        id: 'qz-1',
+        question: 'Antara fungsi pengaktifan berikut, yang manakah mempunyai terbitan pertama maksimum 0.25 yang menyumbang kepada masalah kecerunan lenyap?',
+        options: ['GELU', 'ReLU', 'Leaky ReLU', 'Sigmoid'],
+        correctIndex: 3,
+        explanation: 'Terbitan Sigmoid ialah sigma(z)*(1 - sigma(z)). Pada z=0, sigma(0)=0.5, menghasilkan 0.5 * 0.5 = 0.25, iaitu nilai maksimumnya.'
+      },
+      {
+        id: 'qz-2',
+        question: 'Dalam perambatan balik standard, apakah operasi yang dilakukan antara ralat yang dirambat balik (W^T * delta) dan terbitan pengaktifan tempatan sigma\'(z)?',
+        options: ['Pendaraban Matriks', 'Hasil Darab Hadamard (Unsur demi Unsur)', 'Hasil Darab Kronecker', 'Hasil Darab Silang'],
+        correctIndex: 1,
+        explanation: 'Petua rantai multivariat memerlukan pendaraban unsur demi unsur (Hadamard) antara vektor ralat dan terbitan pengaktifan tempatan.'
+      },
+      {
+        id: 'qz-3',
+        question: 'Apakah varians pemberat yang disyorkan bagi pemulaan normal He (Kaiming) untuk lapisan dengan n_in neuron input?',
+        options: ['1 / n_in', '2 / n_in', '1 / (n_in + n_out)', '2 / (n_in + n_out)'],
+        correctIndex: 1,
+        explanation: 'Pemulaan He menetapkan Var(W) = 2 / n_in bagi menampung sifat ReLU yang menyifarkan kira-kira 50% pengaktifan.'
+      },
+      {
+        id: 'qz-4',
+        question: 'Mengapakah Softmax digandingkan dengan kerugian Entropi Silang dalam pengelasan pelbagai kelas?',
+        options: [
+          'Ia memaksa semua pemberat berjumlah 1',
+          'Kecerunan gabungannya amat ringkas: y_hat - y',
+          'Ia menjamin sifar ralat latihan pada setiap langkah',
+          'Ia menghapuskan sepenuhnya keperluan untuk pincang (bias)'
+        ],
+        correctIndex: 1,
+        explanation: 'Menggabungkan Entropi Silang dengan Softmax memudahkan terbitan secara drastik kepada (y_hat - y), memberikan isyarat ralat yang stabil semasa latihan.'
+      }
+    ]
+  },
+  {
+    id: 'bio-cellular-respiration',
+    title: 'BIO 101: Respirasi Sel & Sintesis Tenaga ATP',
+    subject: 'Biologi & Biokimia',
+    folder: 'Midterm Prep',
+    duration: '35 minit',
+    date: '2026-09-28',
+    summary: 'Penerokaan mendalam Glikolisis, Kitaran Asid Sitrik (Krebs), pemfosforilan oksidatif, dan mekanisme kemiosmotik oleh enzim ATP sintase merentasi membran dalaman mitokondria.',
+    markdownNotes: `# BIO 101: Respirasi Sel & Bioenergetik
+
+## 1. Gambaran Keseluruhan & Tindak Balas Bersih
+Respirasi sel ialah laluan katabolik di mana sel menuai tenaga kimia daripada molekul glukosa:
+
+$$\\text{C}_6\\text{H}_{12}\\text{O}_6 + 6\\text{O}_2 \\longrightarrow 6\\text{CO}_2 + 6\\text{H}_2\\text{O} + 30\\text{-}32\\text{ ATP}$$
+
+Proses ini berlaku dalam 4 peringkat berbeza:
+1. **Glikolisis** (Sitoplasma / Sitosol)
+2. **Pengoksidaan Piruvat** (Matriks Mitokondria)
+3. **Kitaran Asid Sitrik / Krebs** (Matriks Mitokondria)
+4. **Pemfosforilan Oksidatif** (Membran Dalaman Mitokondria)
+
+---
+
+## 2. Pecahan Hasil ATP bagi Setiap Molekul Glukosa
+| Peringkat | Substrat Utama | ATP Terus | Koenzim Terturun |
+| :--- | :--- | :--- | :--- |
+| **Glikolisis** | Glukosa | 2 ATP (bersih) | 2 NADH |
+| **Dekarboksilasi Piruvat** | 2 Piruvat | 0 ATP | 2 NADH |
+| **Kitaran Asid Sitrik** | 2 Asetil-CoA | 2 GTP (ATP) | 6 NADH, 2 FADH$_2$ |
+| **Pemfosforilan Oksidatif** | 10 NADH, 2 FADH$_2$ | ~26-28 ATP | Hasil sampingan H$_2$O |
+`,
+    mindmapMarkdown: `# Respirasi Sel
+## 1. Glikolisis (Sitoplasma)
+### Pelaburan Tenaga (2 ATP digunakan)
+### Pulangan Tenaga (4 ATP + 2 NADH)
+### Hasil Bersih: 2 Piruvat + 2 ATP + 2 NADH
+## 2. Pengoksidaan Piruvat
+### Masuk ke Matriks Mitokondria
+### 2 Asetil-CoA terhasil
+### 2 CO2 dilepaskan
+## 3. Kitaran Asid Sitrik (Matriks)
+### Oksaloasetat + Asetil-CoA -> Sitrat
+### Setiap glukosa: 6 NADH, 2 FADH2, 2 GTP, 4 CO2
+## 4. Pemfosforilan Oksidatif
+### Rantaian Pengangkutan Elektron (Kompleks I-IV)
+### Kecerunan Proton (Ruang Antara Membran)
+### Kemiosmosis melalui ATP Sintase
+### Penerima Elektron Terakhir: O2 -> H2O
+`,
+    flashcards: [
+      {
+        id: 'fc-bio-1',
+        front: 'Di manakah glikolisis berlaku dalam sel eukariot?',
+        back: 'Dalam sitosol / sitoplasma (di luar organel mitokondria).',
+        tag: 'Lokasi Sel'
+      },
+      {
+        id: 'fc-bio-2',
+        front: 'Apakah penerima elektron terakhir dalam rantaian pengangkutan elektron mitokondria?',
+        back: 'Oksigen molekul (O2), yang diturunkan untuk membentuk air (H2O).',
+        tag: 'Pemfosforilan Oksidatif'
+      },
+      {
+        id: 'fc-bio-3',
+        front: 'Berapakah bilangan molekul ATP bersih yang dihasilkan secara terus daripada Glikolisis per molekul glukosa?',
+        back: '2 ATP bersih (4 dihasilkan tolak 2 yang digunakan pada fasa pelaburan).',
+        tag: 'Bioenergetik'
+      }
+    ],
+    quiz: [
+      {
+        id: 'qz-bio-1',
+        question: 'Enzim manakah yang memanfaatkan daya penggerak proton merentasi membran dalaman mitokondria untuk menjana ATP daripada ADP dan Pi?',
+        options: ['Piruvat kinase', 'ATP Sintase (Kompleks V)', 'Heksokinase', 'Fosfofruktokinase'],
+        correctIndex: 1,
+        explanation: 'ATP Sintase (Kompleks V) menggandingkan aliran proton menuruni kecerunan dari ruang antara membran ke dalam matriks dengan sintesis ATP.'
+      }
+    ]
+  }
+];

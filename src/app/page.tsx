@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { sampleLectures, defaultFolders } from '@/lib/sampleData';
+import { sampleLectures, sampleLecturesMalay, defaultFolders } from '@/lib/sampleData';
 import { LectureData, StudyFolder } from '@/types';
 import { Sidebar, ViewMode } from '@/components/Sidebar';
 import { HomeDashboard } from '@/components/HomeDashboard';
@@ -61,7 +61,32 @@ export default function Home() {
     if (savedPro === 'true') {
       setIsPro(true);
     }
+
+    const savedLang = localStorage.getItem('thetawave_language');
+    if (savedLang === 'Bahasa Melayu') {
+      setLectures(sampleLecturesMalay);
+    }
   }, []);
+
+  const handleLanguageChange = (newLang: string) => {
+    if (newLang === 'Bahasa Melayu') {
+      setLectures(prev => {
+        const userAdded = prev.filter(l => 
+          !sampleLectures.some(s => s.id === l.id) && 
+          !sampleLecturesMalay.some(s => s.id === l.id)
+        );
+        return [...sampleLecturesMalay, ...userAdded];
+      });
+    } else {
+      setLectures(prev => {
+        const userAdded = prev.filter(l => 
+          !sampleLectures.some(s => s.id === l.id) && 
+          !sampleLecturesMalay.some(s => s.id === l.id)
+        );
+        return [...sampleLectures, ...userAdded];
+      });
+    }
+  };
 
   const handleToggleTheme = () => {
     setIsDarkMode(prev => {
@@ -342,6 +367,7 @@ export default function Home() {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        onLanguageChange={handleLanguageChange}
       />
 
     </div>

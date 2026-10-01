@@ -49,6 +49,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
     try {
       const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
+      const selectedLang = typeof window !== 'undefined' ? localStorage.getItem('thetawave_language') : null;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,7 +58,8 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           lectureTitle: lecture.title,
           lectureSummary: lecture.summary,
           markdownNotes: lecture.markdownNotes,
-          model: selectedModel || undefined
+          model: selectedModel || undefined,
+          language: selectedLang || undefined
         })
       });
 

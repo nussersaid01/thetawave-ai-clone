@@ -10,11 +10,23 @@ export async function POST(req: NextRequest) {
     const lectureTitle = title || 'Synthesized Lecture';
     const lectureSubject = subject || 'General Studies';
     const outputLanguage = language || 'English (US)';
+    const isMalay = outputLanguage.toLowerCase().includes('melayu') || outputLanguage.toLowerCase().includes('malay');
+
     const prompt = `You are an elite academic AI assistant. Analyze this lecture topic and materials:
 Title: ${lectureTitle}
 Subject: ${lectureSubject}
 Transcript / Notes: ${sampleTranscript || lectureTitle}
-Output Language Requirement: All notes, summaries, mindmap, flashcards, and quiz must be generated in ${outputLanguage}.
+
+${isMalay 
+  ? `MANDATORY LANGUAGE DIRECTIVE: The student has selected BAHASA MELAYU.
+- You MUST write the ENTIRE JSON response strictly in fluent, formal Bahasa Melayu (Malay).
+- summary: Ringkasan eksekutif 2-3 ayat dalam Bahasa Melayu.
+- markdownNotes: Nota komprehensif lengkap dalam Bahasa Melayu dengan tajuk-tajuk Melayu (cth: # ${lectureTitle}, ## 1. Ringkasan Eksekutif, ## 2. Prinsip Teori & Formulasi Matematik, ## 3. Terbitan Analisis, ## 4. Rumusan Penting & Strategi Peperiksaan). Persamaan LaTeX $...$ dan $$...$$ kekal standard antarabangsa.
+- mindmapMarkdown: Peta minda hierarki dalam Bahasa Melayu (# Topik Utama, ## Subtopik, ### Butiran).
+- flashcards: Soalan (front), jawapan (back), dan kategori (tag) SEMUANYA dalam Bahasa Melayu.
+- quiz: Soalan, pilihan jawapan (A, B, C, D), dan penjelasan SEMUANYA dalam Bahasa Melayu.
+DO NOT use English except for universal math symbols, chemical symbols, or equations.`
+  : `Output Language Requirement: All notes, summaries, mindmap, flashcards, and quiz must be generated in English (US).`}
 
 Generate a comprehensive JSON object matching this schema:
 {
@@ -63,7 +75,129 @@ Return ONLY raw valid JSON.`;
     }
 
     // Dynamic High-Fidelity Synthesis Engine
-    const syntheticLecture: LectureData = {
+    const syntheticLecture: LectureData = isMalay ? {
+      id: `lec-${Date.now()}`,
+      title: lectureTitle,
+      subject: lectureSubject,
+      duration: '45 minit',
+      date: new Date().toISOString().split('T')[0],
+      summary: `Sintesis akademik komprehensif bagi "${lectureTitle}". Kuliah ini merungkai prinsip asas teori, model matematik yang mengawal sistem, dan kerangka analisis praktikal.`,
+      markdownNotes: `# ${lectureTitle}
+
+## 1. Ringkasan Eksekutif
+Sesi ini mengkaji mekanisme asas utama yang mengawal **${lectureTitle}**. Kami meneliti postulat teori, menerbitkan persamaan matematik, dan mengaplikasikan kaedah penyelesaian masalah secara sistematik untuk kes-kes kritikal.
+
+---
+
+## 2. Prinsip Teori & Formulasi Matematik
+Transformasi asas yang mengawal sistem ini ditakrifkan oleh:
+
+$$\\Psi(\\mathbf{x}, t) = \\sum_{k=1}^K w_k \\cdot \\phi_k(\\mathbf{x}) e^{-i \\omega_k t}$$
+
+Di mana:
+* $\\Psi(\\mathbf{x}, t)$ menandakan tindak balas sistem komposit merentasi koordinat ruang $\\mathbf{x}$ dan masa $t$.
+* $w_k \\in \\mathbb{R}$ mewakili pekali pemberat bagi setiap mod harmonik.
+* $\\phi_k(\\mathbf{x})$ merujuk kepada fungsi eigen asas ortogonal.
+
+### Jadual Perbandingan Parameter Sistem
+| Parameter | Notasi | Unit | Tafsiran Fizikal |
+| :--- | :--- | :--- | :--- |
+| **Amplitud Tindak Balas** | $\\alpha$ | $[\\text{arb}]$ | Magnitud tenaga utama |
+| **Faktor Pelembapan** | $\\gamma$ | $[\\text{s}^{-1}]$ | Kadar pereputan eksponen setiap kitaran |
+| **Frekuensi Resonan** | $\\omega_0$ | $[\\text{rad/s}]$ | Frekuensi semula jadi tanpa daya |
+
+---
+
+## 3. Terbitan & Analisis Langkah demi Langkah
+1. **Keadaan Sempadan Awal**: Tetapkan nilai sempadan pada $t = 0$ dengan keadaan keseimbangan $\\Psi(0) = \\Psi_0$.
+2. **Operator Pembezaan Peringkat Pertama**: Gunakan operator terlinear:
+   $$\\frac{\\partial \\Psi}{\\partial t} + \\mathcal{D} \\nabla^2 \\Psi = \\mathcal{S}(\\mathbf{x})$$
+3. **Penyelesaian Keseimbangan**: Pengamiran merentasi batasan isipadu menghasilkan pemalar fluks terabadi.
+
+---
+
+## 4. Rumusan Penting & Strategi Peperiksaan
+* Ingat bahawa sebutan bukan homogen mendorong turun naik fana sebelum mencapai keadaan mantap.
+* Semasa menilai had sempadan, sentiasa sahkan keabadian tenaga merentasi antara muka.
+* Terbitan formula ini kerap ditanya dalam soalan peperiksaan pertengahan semester.
+`,
+      mindmapMarkdown: `# ${lectureTitle}
+## 1. Asas Utama
+### Definisi Masalah
+### Konteks Sejarah
+### Andaian Asas
+## 2. Pemodelan Matematik
+### Persamaan Asas: Psi(x, t)
+### Penguraian Fungsi Eigen
+### Kekangan Sempadan
+## 3. Terbitan Analisis
+### Langkah 1: Nilai Awal
+### Langkah 2: Operator Terlinear
+### Langkah 3: Fluks Keadaan Mantap
+## 4. Aplikasi & Sambungan
+### Kes Penggunaan Praktikal
+### Kesilapan Biasa Peperiksaan
+### Formula Penting Dihafal
+`,
+      flashcards: [
+        {
+          id: `fc-gen-1`,
+          front: `Apakah hubungan utama yang mengawal ${lectureTitle}?`,
+          back: `Hubungan antara penguraian fungsi eigen dan ayunan harmonik temporal: Psi(x, t) = sum(w_k * phi_k(x) * exp(-i*omega*t)).`,
+          tag: 'Formula Asas'
+        },
+        {
+          id: `fc-gen-2`,
+          front: `Bagaimanakah had sempadan disahkan semasa fasa terbitan?`,
+          back: `Dengan memastikan keabadian fluks merentasi sempadan antara muka di bawah keadaan awal t = 0.`,
+          tag: 'Terbitan'
+        },
+        {
+          id: `fc-gen-3`,
+          front: `Apakah yang mewakili frekuensi semula jadi tanpa daya dalam formulasi ini?`,
+          back: `Parameter frekuensi resonan omega_0 (diukur dalam unit radian sesaat).`,
+          tag: 'Parameter'
+        }
+      ],
+      quiz: [
+        {
+          id: `qz-gen-1`,
+          question: `Dalam formulasi yang mengawal ${lectureTitle}, apakah yang diwakili oleh phi_k(x)?`,
+          options: [
+            'Fungsi eigen asas ortogonal',
+            'Hingar gangguan rawak',
+            'Ofset ruang malar',
+            'Geseran empirikal statik'
+          ],
+          correctIndex: 0,
+          explanation: 'phi_k(x) mewakili set fungsi eigen asas ortogonal yang merentasi domain ruang.'
+        },
+        {
+          id: `qz-gen-2`,
+          question: `Parameter manakah yang bertanggungjawab terhadap kadar pereputan tenaga eksponen setiap kitaran?`,
+          options: [
+            'Faktor pelembapan (gamma)',
+            'Frekuensi semula jadi (omega_0)',
+            'Faktor skala amplitud (alpha)',
+            'Pekali pemberat (w_k)'
+          ],
+          correctIndex: 0,
+          explanation: 'Faktor pelembapan gamma menentukan kadar pereputan eksponen bagi setiap kitaran operasi.'
+        },
+        {
+          id: `qz-gen-3`,
+          question: `Mengapakah pengesahan keabadian fluks sempadan penting semasa penyelesaian keadaan mantap?`,
+          options: [
+            'Ia mengelakkan pelanggaran hukum keabadian tenaga fizikal',
+            'Ia memaksa tindak balas menjadi sifar secara buatan',
+            'Ia menghapuskan semua langkah pengamiran matematik',
+            'Ia menukar persamaan bukan linear kepada pemalar linear'
+          ],
+          correctIndex: 0,
+          explanation: 'Mengekalkan fluks sempadan memastikan bahawa model matematik mematuhi hukum keabadian tenaga fizikal sepenuhnya.'
+        }
+      ]
+    } : {
       id: `lec-${Date.now()}`,
       title: lectureTitle,
       subject: lectureSubject,

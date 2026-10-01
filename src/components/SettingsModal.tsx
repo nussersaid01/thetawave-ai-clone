@@ -6,9 +6,10 @@ import { X, Settings, Globe, Cpu, Database, Check, Sparkles, ShieldCheck } from 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onLanguageChange?: (lang: string) => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onLanguageChange }) => {
   const [language, setLanguage] = useState('English (US)');
   const [modelTier, setModelTier] = useState('meta-llama/llama-3.3-70b-instruct:free');
   const [autoSync, setAutoSync] = useState(true);
@@ -30,6 +31,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       localStorage.setItem('thetawave_ai_model', modelTier);
       localStorage.setItem('thetawave_language', language);
       localStorage.setItem('thetawave_autosync', String(autoSync));
+    }
+    if (onLanguageChange) {
+      onLanguageChange(language);
     }
     setIsSaved(true);
     setTimeout(() => {
@@ -85,9 +89,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             >
               <option value="English (US)">English (US)</option>
               <option value="Bahasa Melayu">Bahasa Melayu</option>
-              <option value="Chinese (Simplified)">Chinese (Simplified)</option>
-              <option value="Japanese">Japanese</option>
-              <option value="German">German</option>
             </select>
           </div>
 

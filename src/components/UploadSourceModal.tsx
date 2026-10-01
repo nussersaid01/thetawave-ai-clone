@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   UploadCloud, 
@@ -27,20 +27,24 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedLink, setPastedLink] = useState('');
-  const [outputLanguage, setOutputLanguage] = useState('EN English');
+  const [outputLanguage, setOutputLanguage] = useState('English (US)');
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('thetawave_language');
+      if (savedLang) {
+        setOutputLanguage(savedLang);
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const languages = [
-    'EN English',
-    'MS Bahasa Melayu',
-    'ES Spanish',
-    'FR French',
-    'DE German',
-    'ZH Chinese',
-    'JA Japanese'
+    'English (US)',
+    'Bahasa Melayu'
   ];
 
   const handleFileDrop = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,6 +201,9 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
                       type="button"
                       onClick={() => {
                         setOutputLanguage(lang);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('thetawave_language', lang);
+                        }
                         setIsLangOpen(false);
                       }}
                       className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-zinc-700 hover:bg-indigo-50 hover:text-indigo-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
