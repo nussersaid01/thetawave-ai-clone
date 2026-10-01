@@ -36,10 +36,14 @@
   - Enhanced `/api/chat` with Arabic and Jawi response handling, citations, and grounded fallbacks.
 - **5. Native Web Audio API Synthesizer for Focus Sessions & Completion Chimes**:
   - Engineered `src/lib/focusAudio.ts` with zero external audio file dependencies (100% offline, instant start, zero latency).
-  - **Study Mode (25m Focus Session)**: Generates genuine 6Hz Binaural Theta Waves (216Hz/222Hz stereo differential) layered with smooth filtered pink noise (ambient airflow/gentle waterfall) to stimulate deep flow state and memory retention.
-  - **Break Mode (5m Quick Break)**: Generates 432Hz Zen harmonic healing chords with 0.15Hz slow breath LFO modulation to promote parasympathetic nervous system recovery.
+  - **Full Play / Pause Synchronization**: Solved audio playback decoupling. Pressing **Play** resumes both timer and audio; pressing **Pause** or **Reset** immediately pauses/fades out the ambient sound without delay.
+  - **Organic Nature Soundscapes**: Replaced raw electronic frequency tones with soothing, realistic acoustic soundscapes:
+    - 🌧️ **Hujan Rintik (Cozy Rain)**: Multi-layer filtered brown & pink noise simulating gentle raindrops on a roof/window.
+    - 🌊 **Ombak Laut (Ocean Waves)**: Rhythmic resonant lowpass LFO swells simulating ocean surf rolling in and out.
+    - ☕ **Deruan Lembut (Deep Brown Noise)**: Warm, soothing ambient air/waterfall blanket for deep focus.
+    - 🎧 **Theta Wave 6Hz**: Embedded gentle binaural pulse within a warm acoustic noise bed.
   - **Completion Chime**: Tibetan singing bowl harmonic chime with exponential decay triggered when timer reaches 00:00.
-  - **UI Controls**: Volume slider (5% - 100%), "Uji Bunyi Loceng Tamat (Test Chime)" button, and smooth SVG animated progress ring in `src/components/GoFocusView.tsx`.
+  - **UI Controls**: Preset sound chips, volume slider (5% - 100%), "Uji Loceng Tamat Sesi" button, and smooth SVG animated progress ring in `src/components/GoFocusView.tsx`.
 
 ## 3. Dynamic 4-Tier AI Engine & Workspace Model Selection
 - **Tier Architecture (Ordered by Capability - 2 Free on Top, 2 Paid on Bottom)**:
