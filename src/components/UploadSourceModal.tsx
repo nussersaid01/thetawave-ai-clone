@@ -268,10 +268,10 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div>
               <p className="font-bold text-amber-950 dark:text-amber-100">
-                💡 Cadangan Model untuk {isJawi ? 'Tulisan Jawi' : 'Bahasa Arab'}:
+                💡 Recommended Model for {isJawi ? 'Jawi Script' : 'Arabic'}:
               </p>
               <p className="mt-0.5 text-amber-800 dark:text-amber-300">
-                Disyorkan memastikan Settings menggunakan sekurang-kurangnya <strong>Meta LLaMA 3.3 70B (Percuma)</strong> atau <strong>DeepSeek-V3 / R1</strong> untuk ketepatan Nahu, morfologi Arab, dan abjad Jawi yang optimum.
+                We recommend selecting at least <strong>Meta LLaMA 3.3 70B (Free)</strong> or <strong>DeepSeek-V3 / R1</strong> in Settings for optimal grammar, morphology, and script accuracy.
               </p>
             </div>
           </div>

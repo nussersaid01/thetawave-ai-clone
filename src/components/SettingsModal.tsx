@@ -98,10 +98,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 <Sparkles className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
                   <p className="font-bold text-amber-950 dark:text-amber-100">
-                    💡 Cadangan Model untuk {language.includes('Jawi') || language.includes('جاوي') ? 'Tulisan Jawi' : 'Bahasa Arab'}:
+                    💡 Recommended Model for {language.includes('Jawi') || language.includes('جاوي') ? 'Jawi Script' : 'Arabic'}:
                   </p>
                   <p className="mt-0.5 text-amber-800 dark:text-amber-300">
-                    Disyorkan memilih sekurang-kurangnya <strong>Meta LLaMA 3.3 70B (Percuma)</strong> atau <strong>DeepSeek-V3 / R1</strong> untuk ketepatan Nahu, morfologi Arab, dan abjad Jawi yang optimum.
+                    We recommend selecting at least <strong>Meta LLaMA 3.3 70B (Free)</strong> or <strong>DeepSeek-V3 / R1</strong> for optimal grammar, morphology, and script accuracy.
                   </p>
                 </div>
               </div>
@@ -120,7 +120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' 
                   : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
               }`}>
-                {isFreeModel ? '🟢 100% Free' : '⚡ Paid (~RM0.001)'}
+                {isFreeModel ? '🟢 100% Free' : '⚡ Paid (~$0.0002)'}
               </span>
             </div>
             <select
@@ -128,7 +128,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               onChange={(e) => setModelTier(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-indigo-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 font-medium"
             >
-              <optgroup label="── 🟢 Free Tier (Kos RM0.00) ──">
+              <optgroup label="── 🟢 Free Tier ($0.00 Cost) ──">
                 <option value="google/gemini-2.0-flash-exp:free">
                   Gemini 2.0 Flash (Free • Ultra Fast)
                 </option>
@@ -136,20 +136,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   Meta LLaMA 3.3 70B (Free • Smart Academic) [Default]
                 </option>
               </optgroup>
-              <optgroup label="── ⚡ Paid Tier (Paling Pandai & Jimat) ──">
+              <optgroup label="── ⚡ Paid Tier (High Reasoning & Value) ──">
                 <option value="deepseek/deepseek-chat">
-                  DeepSeek-V3 (Paid ~RM0.001 • Flagship Core)
+                  DeepSeek-V3 (Paid ~$0.0002 • Flagship Core)
                 </option>
                 <option value="deepseek/deepseek-r1">
-                  DeepSeek-R1 (Paid ~RM0.003 • PhD Deep Reasoning & Math)
+                  DeepSeek-R1 (Paid ~$0.0006 • PhD Deep Reasoning & Math)
                 </option>
               </optgroup>
             </select>
             <p className="mt-1.5 text-[10px] text-zinc-500 dark:text-zinc-400">
-              {modelTier === 'google/gemini-2.0-flash-exp:free' && '⚡ Ultra-cepat, sesuai untuk ringkasan pantas & kuiz segera.'}
-              {modelTier === 'meta-llama/llama-3.3-70b-instruct:free' && '🎓 Model open-source 70B paling bijak untuk nota kuliah akademik mendalam.'}
-              {modelTier === 'deepseek/deepseek-chat' && '🧠 Setaraf GPT-4o / Claude 3.5 pada kos mikro (~RM0.001 per nota).'}
-              {modelTier === 'deepseek/deepseek-r1' && '🔬 Enjin penalaran tertinggi dengan analisis langkah-demi-langkah & formula kompleks.'}
+              {modelTier === 'google/gemini-2.0-flash-exp:free' && '⚡ Ultra-fast, ideal for rapid summaries and quick flashcards.'}
+              {modelTier === 'meta-llama/llama-3.3-70b-instruct:free' && '🎓 Most capable open-source 70B model for deep academic lecture synthesis.'}
+              {modelTier === 'deepseek/deepseek-chat' && '🧠 GPT-4o / Claude 3.5 level intelligence at micro cost (~$0.0002/note).'}
+              {modelTier === 'deepseek/deepseek-r1' && '🔬 Supreme reasoning engine with step-by-step proofs and complex mathematical derivations.'}
             </p>
           </div>
 

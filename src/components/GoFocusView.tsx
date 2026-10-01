@@ -210,10 +210,10 @@ export const GoFocusView: React.FC = () => {
             <span className="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
               <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`}></span>
               <span>
-                {isActive ? 'Sedang Dimainkan' : 'Dijeda (Paused)'}: {
-                  soundScape === 'rain' ? '🌧️ Hujan Rintik' :
-                  soundScape === 'ocean' ? '🌊 Ombak Laut' :
-                  soundScape === 'brown' ? '☕ Deruan Lembut' :
+                {isActive ? 'Playing' : 'Paused'}: {
+                  soundScape === 'rain' ? '🌧️ Cozy Rain' :
+                  soundScape === 'ocean' ? '🌊 Ocean Waves' :
+                  soundScape === 'brown' ? '☕ Deep Brown Noise' :
                   '🎧 Theta 6Hz Beat'
                 }
               </span>
@@ -232,7 +232,7 @@ export const GoFocusView: React.FC = () => {
               ? 'bg-indigo-600 shadow-indigo-500/25 hover:bg-indigo-700'
               : 'bg-emerald-600 shadow-emerald-500/25 hover:bg-emerald-700'
           }`}
-          title={isActive ? 'Jeda Masa & Bunyi (Pause)' : 'Mula Masa & Bunyi (Play)'}
+          title={isActive ? 'Pause Session & Audio' : 'Start Session & Audio'}
         >
           {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
         </button>
@@ -240,7 +240,7 @@ export const GoFocusView: React.FC = () => {
         {/* Reset Button */}
         <button
           onClick={resetTimer}
-          title="Tetap Semula Masa (Reset)"
+          title="Reset Timer"
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 cursor-pointer"
         >
           <RotateCcw className="h-5 w-5" />
@@ -249,7 +249,7 @@ export const GoFocusView: React.FC = () => {
         {/* Sound Toggle (Speaker) */}
         <button
           onClick={toggleSound}
-          title={soundEnabled ? 'Matikan Bunyi (Mute)' : 'Hidupkan Bunyi Menenangkan'}
+          title={soundEnabled ? 'Mute Ambient Audio' : 'Play Ambient Soundscape'}
           className={`flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm transition-all cursor-pointer ${
             soundEnabled
               ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 ring-2 ring-indigo-500/20'
@@ -273,7 +273,7 @@ export const GoFocusView: React.FC = () => {
             }`}
           >
             <CloudRain className="h-3.5 w-3.5 text-indigo-500" />
-            <span>Hujan Rintik</span>
+            <span>Cozy Rain</span>
           </button>
 
           <button
@@ -285,7 +285,7 @@ export const GoFocusView: React.FC = () => {
             }`}
           >
             <Waves className="h-3.5 w-3.5 text-emerald-500" />
-            <span>Ombak Laut</span>
+            <span>Ocean Waves</span>
           </button>
 
           <button
@@ -297,7 +297,7 @@ export const GoFocusView: React.FC = () => {
             }`}
           >
             <Coffee className="h-3.5 w-3.5 text-amber-500" />
-            <span>Deruan Lembut</span>
+            <span>Deep Brown Noise</span>
           </button>
 
           <button
@@ -316,7 +316,7 @@ export const GoFocusView: React.FC = () => {
         {/* Volume Slider when Sound is Enabled */}
         {soundEnabled && (
           <div className="flex items-center gap-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 px-3.5 py-1.5 border border-zinc-200/80 dark:border-zinc-700 text-xs">
-            <span className="text-[11px] font-medium text-zinc-500">Kelantangan:</span>
+            <span className="text-[11px] font-medium text-zinc-500">Volume:</span>
             <input
               type="range"
               min="0.05"
@@ -325,7 +325,7 @@ export const GoFocusView: React.FC = () => {
               value={volume}
               onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
               className="w-24 accent-indigo-600 h-1 cursor-pointer"
-              title={`Kelantangan: ${Math.round(volume * 100)}%`}
+              title={`Volume: ${Math.round(volume * 100)}%`}
             />
             <span className="text-[11px] font-mono text-zinc-700 dark:text-zinc-300 font-semibold w-7 text-right">
               {Math.round(volume * 100)}%
@@ -340,7 +340,7 @@ export const GoFocusView: React.FC = () => {
           className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pt-1 cursor-pointer"
         >
           <Bell className="h-3 w-3" />
-          <span>Uji Loceng Tamat Sesi (Test Chime Bell)</span>
+          <span>Test Completion Bell</span>
         </button>
       </div>
 
@@ -348,12 +348,12 @@ export const GoFocusView: React.FC = () => {
       <div className="mt-8 rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4 text-left text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 max-w-sm">
         <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
           <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-          <span>Sains Fokus ThetaWave</span>
+          <span>ThetaWave Focus Science</span>
         </div>
         <p>
           {mode === 'study'
-            ? 'Bunyi rintik hujan dan deruan frekuensi rendah meredupkan gangguan sekeliling supaya otak memasuki zon aliran fokus mendalam (deep flow state).'
-            : 'Fasa rehat 5 minit dengan deruan ombak santai menstabilkan degupan jantung dan meredakan keletihan mental sebelum sesi fokus seterusnya.'}
+            ? 'Gentle rainfall and low-frequency ambient sounds mask background distractions, guiding your brain into a state of deep, uninterrupted academic flow.'
+            : 'A 5-minute break with calming soundscapes resets parasympathetic tone, reducing cognitive fatigue before your next study session.'}
         </p>
       </div>
 
