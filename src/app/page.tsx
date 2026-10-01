@@ -23,6 +23,7 @@ import { LearnHubView } from '@/components/views/LearnHubView';
 import { FullChatView } from '@/components/views/FullChatView';
 import { SourcesView } from '@/components/views/SourcesView';
 import { FoldersView } from '@/components/views/FoldersView';
+import { Home as HomeIcon, FileText, Timer, Folder, Settings } from 'lucide-react';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<ViewMode>('home');
@@ -220,7 +221,7 @@ export default function Home() {
       />
 
       {/* 2. Main Content Canvas */}
-      <div className="flex flex-1 flex-col h-full overflow-hidden bg-white dark:bg-zinc-950">
+      <div className="flex flex-1 flex-col h-full overflow-hidden bg-white dark:bg-zinc-950 pb-16 md:pb-0">
         
         {/* VIEW 1: Home Dashboard (Matching media_1790828094632.png) */}
         {currentView === 'home' && (
@@ -229,6 +230,7 @@ export default function Home() {
             onOpenNote={handleOpenNote}
             recentNotes={lectures}
             onNewEmptyNote={() => handleNewEmptyNote()}
+            onNavigateFocus={() => setCurrentView('focus')}
             isDarkMode={isDarkMode}
             onToggleTheme={handleToggleTheme}
           />
@@ -281,7 +283,7 @@ export default function Home() {
         {/* VIEW 7: Standalone Focus Room */}
         {currentView === 'focus' && (
           <div className="flex-1 overflow-y-auto">
-            <GoFocusView />
+            <GoFocusView onBackToDashboard={() => setCurrentView('home')} />
           </div>
         )}
 
@@ -326,13 +328,75 @@ export default function Home() {
               )}
 
               {activeTab === 'focus' && (
-                <GoFocusView />
+                <GoFocusView onBackToDashboard={() => setCurrentView('home')} />
               )}
             </main>
           </>
         )}
 
       </div>
+
+      {/* 3. Mobile Bottom Navigation Bar (md:hidden) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-zinc-200/90 bg-white/95 backdrop-blur-md px-2 dark:border-zinc-800 dark:bg-zinc-950/95 shadow-lg select-none">
+        <button
+          onClick={() => setCurrentView('home')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer ${
+            currentView === 'home'
+              ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+          }`}
+        >
+          <HomeIcon className="h-4 w-4" />
+          <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setNotesFilter('All');
+            setCurrentView('all-notes');
+          }}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer ${
+            currentView === 'all-notes'
+              ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          <span>Notes</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentView('focus')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer ${
+            currentView === 'focus'
+              ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+          }`}
+        >
+          <Timer className="h-4 w-4" />
+          <span>Go Focus</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentView('folders')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer ${
+            currentView === 'folders'
+              ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+          }`}
+        >
+          <Folder className="h-4 w-4" />
+          <span>Folders</span>
+        </button>
+
+        <button
+          onClick={() => setIsSettingsModalOpen(true)}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 transition-colors cursor-pointer"
+        >
+          <Settings className="h-4 w-4" />
+          <span>Settings</span>
+        </button>
+      </nav>
 
       {/* Upload Source Modal (Dropzone, Youtube/Web/Text, Language selector) */}
       <UploadSourceModal

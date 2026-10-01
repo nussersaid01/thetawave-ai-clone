@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Timer
 } from 'lucide-react';
 import { LectureData } from '@/types';
 
@@ -24,6 +25,7 @@ interface HomeDashboardProps {
   onOpenNote: (lecture: LectureData) => void;
   recentNotes: LectureData[];
   onNewEmptyNote: () => void;
+  onNavigateFocus?: () => void;
   isDarkMode?: boolean;
   onToggleTheme?: () => void;
 }
@@ -33,6 +35,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onOpenNote,
   recentNotes,
   onNewEmptyNote,
+  onNavigateFocus,
   isDarkMode = false,
   onToggleTheme
 }) => {
@@ -106,6 +109,30 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <PenTool className="h-8 w-8" />
           </div>
         </div>
+
+        {/* Card 3: Go Focus Study Room */}
+        {onNavigateFocus && (
+          <div 
+            onClick={onNavigateFocus}
+            className="group relative flex cursor-pointer items-center justify-between rounded-3xl border border-zinc-200/80 bg-gradient-to-br from-white to-[#f0fdf4] p-7 shadow-sm transition-all hover:border-emerald-300 hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/60 md:col-span-2"
+          >
+            <div className="max-w-[70%]">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 group-hover:text-emerald-600 transition-colors flex items-center gap-2">
+                <span>Go Focus Study Room</span>
+                <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                  Pomodoro & Audio
+                </span>
+              </h3>
+              <p className="mt-1.5 text-xs text-zinc-500 leading-relaxed">
+                25m Focus Sprint & 5m Quick Break with cozy rain, ocean waves, and brown noise.
+              </p>
+            </div>
+
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-inner group-hover:scale-105 transition-transform dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0">
+              <Timer className="h-8 w-8" />
+            </div>
+          </div>
+        )}
 
       </div>
 
