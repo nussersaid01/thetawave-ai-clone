@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, 
   Pause, 
@@ -9,13 +9,17 @@ import {
   VolumeX, 
   Sparkles, 
   Bell, 
-  Headphones 
+  CloudRain,
+  Waves,
+  Coffee,
+  Headphones
 } from 'lucide-react';
 import { 
   startAmbientSound, 
   stopAmbientSound, 
   playCompletionChime, 
-  setAmbientVolume 
+  setAmbientVolume,
+  SoundScapeType 
 } from '@/lib/focusAudio';
 
 export const GoFocusView: React.FC = () => {
@@ -23,8 +27,19 @@ export const GoFocusView: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<'study' | 'break'>('study');
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [volume, setVolume] = useState(0.35);
+  const [soundScape, setSoundScape] = useState<SoundScapeType>('rain');
+  const [volume, setVolume] = useState(0.4);
 
+  // Sync default soundscape to mode
+  useEffect(() => {
+    if (mode === 'break') {
+      setSoundScape('ocean'); // 5m Quick Break defaults to calming ocean waves
+    } else {
+      setSoundScape('rain');  // 25m Focus defaults to cozy rain patter
+    }
+  }, [mode]);
+
+  // Main countdown timer interval
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -33,19 +48,16 @@ export const GoFocusView: React.FC = () => {
         setSecondsLeft(prev => prev - 1);
       }, 1000);
     } else if (secondsLeft === 0) {
+      // Session finished! Play completion bell chime
       playCompletionChime();
+      stopAmbientSound();
+
       if (mode === 'study') {
         setMode('break');
         setSecondsLeft(5 * 60);
-        if (soundEnabled) {
-          startAmbientSound('break', volume);
-        }
       } else {
         setMode('study');
         setSecondsLeft(25 * 60);
-        if (soundEnabled) {
-          startAmbientSound('study', volume);
-        }
       }
       setIsActive(false);
     }
@@ -53,40 +65,70 @@ export const GoFocusView: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, secondsLeft, mode, soundEnabled, volume]);
+  }, [isActive, secondsLeft, mode]);
 
+  // Cleanup audio on component unmount
   useEffect(() => {
     return () => {
       stopAmbientSound();
     };
   }, []);
 
-  const toggleTimer = () => setIsActive(!isActive);
+  // Handle Play / Pause button
+  const toggleTimer = () => {
+    const nextActive = !isActive;
+    setIsActive(nextActive);
 
-  const resetTimer = () => {
-    setIsActive(false);
-    setSecondsLeft(mode === 'study' ? 25 * 60 : 5 * 60);
-  };
-
-  const setStudyMode = (newMode: 'study' | 'break') => {
-    setMode(newMode);
-    setIsActive(false);
-    setSecondsLeft(newMode === 'study' ? 25 * 60 : 5 * 60);
-    if (soundEnabled) {
-      startAmbientSound(newMode, volume);
+    if (nextActive) {
+      // Resumed: if sound is enabled, start ambient audio
+      if (soundEnabled) {
+        startAmbientSound(soundScape, volume);
+      }
+    } else {
+      // Paused: immediately pause/stop ambient audio so it doesn't keep buzzing!
+      stopAmbientSound();
     }
   };
 
+  // Reset timer
+  const resetTimer = () => {
+    setIsActive(false);
+    stopAmbientSound();
+    setSecondsLeft(mode === 'study' ? 25 * 60 : 5 * 60);
+  };
+
+  // Switch between 25m Focus and 5m Quick Break
+  const setStudyMode = (newMode: 'study' | 'break') => {
+    setMode(newMode);
+    setIsActive(false);
+    stopAmbientSound();
+    setSecondsLeft(newMode === 'study' ? 25 * 60 : 5 * 60);
+    const newSound: SoundScapeType = newMode === 'study' ? 'rain' : 'ocean';
+    setSoundScape(newSound);
+  };
+
+  // Toggle audio speaker button
   const toggleSound = () => {
     const nextState = !soundEnabled;
     setSoundEnabled(nextState);
+
     if (nextState) {
-      startAmbientSound(mode, volume);
+      // Start audio immediately so user hears their selected sound
+      startAmbientSound(soundScape, volume);
     } else {
       stopAmbientSound();
     }
   };
 
+  // Switch soundscape preset (Rain, Ocean, Brown Noise, Theta Wave)
+  const changeSoundScape = (newSound: SoundScapeType) => {
+    setSoundScape(newSound);
+    if (soundEnabled) {
+      startAmbientSound(newSound, volume);
+    }
+  };
+
+  // Adjust volume
   const handleVolumeChange = (newVol: number) => {
     setVolume(newVol);
     setAmbientVolume(newVol);
@@ -104,11 +146,11 @@ export const GoFocusView: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl flex-col items-center justify-center px-4 py-8 text-center">
       
-      {/* Mode Selector */}
+      {/* Mode Selector (25m Focus / 5m Break) */}
       <div className="mb-8 flex items-center gap-2 rounded-2xl bg-zinc-100 p-1.5 dark:bg-zinc-900">
         <button
           onClick={() => setStudyMode('study')}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
             mode === 'study'
               ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-800 dark:text-indigo-400'
               : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
@@ -118,7 +160,7 @@ export const GoFocusView: React.FC = () => {
         </button>
         <button
           onClick={() => setStudyMode('break')}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
             mode === 'break'
               ? 'bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400'
               : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
@@ -128,7 +170,7 @@ export const GoFocusView: React.FC = () => {
         </button>
       </div>
 
-      {/* Circular Timer Visual with Animated SVG Progress Ring */}
+      {/* Circular Timer Visual with Animated SVG Ring */}
       <div className="relative flex h-72 w-72 items-center justify-center">
         <svg className="absolute inset-0 h-full w-full -rotate-90">
           <circle
@@ -163,87 +205,142 @@ export const GoFocusView: React.FC = () => {
           }`}>
             {mode === 'study' ? 'Theta Wave Focus' : 'Rest & Recharge'}
           </span>
+          
           {soundEnabled && (
-            <span className="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 animate-pulse">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              {mode === 'study' ? 'Theta 6Hz Beat Active' : 'Zen Waves Active'}
+            <span className="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`}></span>
+              <span>
+                {isActive ? 'Sedang Dimainkan' : 'Dijeda (Paused)'}: {
+                  soundScape === 'rain' ? '🌧️ Hujan Rintik' :
+                  soundScape === 'ocean' ? '🌊 Ombak Laut' :
+                  soundScape === 'brown' ? '☕ Deruan Lembut' :
+                  '🎧 Theta 6Hz Beat'
+                }
+              </span>
             </span>
           )}
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Primary Action Controls */}
       <div className="mt-8 flex items-center gap-4">
+        {/* Play / Pause Button */}
         <button
           onClick={toggleTimer}
-          className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-xl transition cursor-pointer ${
+          className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-xl transition-all cursor-pointer ${
             mode === 'study'
               ? 'bg-indigo-600 shadow-indigo-500/25 hover:bg-indigo-700'
               : 'bg-emerald-600 shadow-emerald-500/25 hover:bg-emerald-700'
           }`}
-          title={isActive ? 'Pause' : 'Start'}
+          title={isActive ? 'Jeda Masa & Bunyi (Pause)' : 'Mula Masa & Bunyi (Play)'}
         >
           {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
         </button>
 
+        {/* Reset Button */}
         <button
           onClick={resetTimer}
-          title="Reset Timer"
+          title="Tetap Semula Masa (Reset)"
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 cursor-pointer"
         >
           <RotateCcw className="h-5 w-5" />
         </button>
 
+        {/* Sound Toggle (Speaker) */}
         <button
           onClick={toggleSound}
-          title={soundEnabled ? 'Matikan Bunyi (Mute)' : 'Hidupkan Bunyi Gelombang Minda (Ambient Audio)'}
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm transition cursor-pointer ${
+          title={soundEnabled ? 'Matikan Bunyi (Mute)' : 'Hidupkan Bunyi Menenangkan'}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm transition-all cursor-pointer ${
             soundEnabled
-              ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400'
-              : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300'
+              ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 ring-2 ring-indigo-500/20'
+              : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 hover:border-zinc-300'
           }`}
         >
-          {soundEnabled ? <Volume2 className="h-5 w-5 animate-pulse" /> : <VolumeX className="h-5 w-5" />}
+          {soundEnabled ? <Volume2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" /> : <VolumeX className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* Sound Settings & Presets */}
-      <div className="mt-4 flex flex-col items-center gap-2">
+      {/* Sound Selection Chips & Volume Controls */}
+      <div className="mt-5 flex flex-col items-center gap-3">
+        {/* Preset Sound Chips */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
+          <button
+            onClick={() => changeSoundScape('rain')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              soundScape === 'rain'
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <CloudRain className="h-3.5 w-3.5 text-indigo-500" />
+            <span>Hujan Rintik</span>
+          </button>
+
+          <button
+            onClick={() => changeSoundScape('ocean')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              soundScape === 'ocean'
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <Waves className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Ombak Laut</span>
+          </button>
+
+          <button
+            onClick={() => changeSoundScape('brown')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              soundScape === 'brown'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <Coffee className="h-3.5 w-3.5 text-amber-500" />
+            <span>Deruan Lembut</span>
+          </button>
+
+          <button
+            onClick={() => changeSoundScape('binaural')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              soundScape === 'binaural'
+                ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <Headphones className="h-3.5 w-3.5 text-purple-500" />
+            <span>Theta Wave 6Hz</span>
+          </button>
+        </div>
+
+        {/* Volume Slider when Sound is Enabled */}
         {soundEnabled && (
-          <div className="flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-2 text-xs dark:border-indigo-900/40 dark:bg-indigo-950/40">
-            <span className="flex items-center gap-1.5 font-medium text-indigo-700 dark:text-indigo-300">
-              <Headphones className="h-3.5 w-3.5" />
-              <span>
-                {mode === 'study' 
-                  ? 'Theta Binaural Beat (6Hz) & Pink Noise' 
-                  : 'Zen 432Hz Calming Relaxation Waves'}
-              </span>
+          <div className="flex items-center gap-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 px-3.5 py-1.5 border border-zinc-200/80 dark:border-zinc-700 text-xs">
+            <span className="text-[11px] font-medium text-zinc-500">Kelantangan:</span>
+            <input
+              type="range"
+              min="0.05"
+              max="1"
+              step="0.05"
+              value={volume}
+              onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+              className="w-24 accent-indigo-600 h-1 cursor-pointer"
+              title={`Kelantangan: ${Math.round(volume * 100)}%`}
+            />
+            <span className="text-[11px] font-mono text-zinc-700 dark:text-zinc-300 font-semibold w-7 text-right">
+              {Math.round(volume * 100)}%
             </span>
-            <div className="flex items-center gap-1.5 ml-2 border-l border-indigo-200 dark:border-indigo-800 pl-3">
-              <input
-                type="range"
-                min="0.05"
-                max="1"
-                step="0.05"
-                value={volume}
-                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                className="w-20 accent-indigo-600 h-1 cursor-pointer"
-                title={`Kelantangan: ${Math.round(volume * 100)}%`}
-              />
-              <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 w-7 text-right">
-                {Math.round(volume * 100)}%
-              </span>
-            </div>
           </div>
         )}
 
+        {/* Test Chime Button */}
         <button
           type="button"
           onClick={() => playCompletionChime()}
           className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pt-1 cursor-pointer"
         >
           <Bell className="h-3 w-3" />
-          <span>Uji Bunyi Loceng Tamat (Test Chime)</span>
+          <span>Uji Loceng Tamat Sesi (Test Chime Bell)</span>
         </button>
       </div>
 
@@ -251,12 +348,12 @@ export const GoFocusView: React.FC = () => {
       <div className="mt-8 rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4 text-left text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 max-w-sm">
         <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
           <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-          <span>ThetaWave Focus Science</span>
+          <span>Sains Fokus ThetaWave</span>
         </div>
         <p>
           {mode === 'study'
-            ? 'Gelombang Theta (4-7Hz) merangsang keadaan aliran minda (deep flow) dan fokus mendalam bagi mempercepatkan hafalan nota kuliah.'
-            : 'Fasa rehat 5 minit dengan frekuensi 432Hz membantu sistem saraf parasimpatetik menenangkan otak sebelum memulakan sesi fokus seterusnya.'}
+            ? 'Bunyi rintik hujan dan deruan frekuensi rendah meredupkan gangguan sekeliling supaya otak memasuki zon aliran fokus mendalam (deep flow state).'
+            : 'Fasa rehat 5 minit dengan deruan ombak santai menstabilkan degupan jantung dan meredakan keletihan mental sebelum sesi fokus seterusnya.'}
         </p>
       </div>
 
