@@ -89,7 +89,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             >
               <option value="English (US)">English (US)</option>
               <option value="Bahasa Melayu">Bahasa Melayu</option>
+              <option value="العربية (Arabic)">العربية (Arabic)</option>
+              <option value="Tulisan Jawi (جاوي)">Tulisan Jawi (جاوي)</option>
             </select>
+
+            {(language.includes('Arabic') || language.includes('العربية') || language.includes('Jawi') || language.includes('جاوي')) && (
+              <div className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 p-2.5 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed flex items-start gap-2">
+                <Sparkles className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-950 dark:text-amber-100">
+                    💡 Cadangan Model untuk {language.includes('Jawi') || language.includes('جاوي') ? 'Tulisan Jawi' : 'Bahasa Arab'}:
+                  </p>
+                  <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+                    Disyorkan memilih sekurang-kurangnya <strong>Meta LLaMA 3.3 70B (Percuma)</strong> atau <strong>DeepSeek-V3 / R1</strong> untuk ketepatan Nahu, morfologi Arab, dan abjad Jawi yang optimum.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* AI Model Architecture */}

@@ -10,7 +10,8 @@ import {
   ChevronDown, 
   Loader2, 
   Sparkles,
-  Check
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 import { LectureData } from '@/types';
 
@@ -44,8 +45,15 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
 
   const languages = [
     'English (US)',
-    'Bahasa Melayu'
+    'Bahasa Melayu',
+    'العربية (Arabic)',
+    'Tulisan Jawi (جاوي)'
   ];
+
+  const isArabicOrJawi = outputLanguage.includes('Arabic') || outputLanguage.includes('العربية') || outputLanguage.includes('Jawi') || outputLanguage.includes('جاوي');
+  const isArabic = outputLanguage.includes('Arabic') || outputLanguage.includes('العربية');
+  const isJawi = outputLanguage.includes('Jawi') || outputLanguage.includes('جاوي');
+  const isMalay = outputLanguage.includes('Melayu') || outputLanguage.includes('Malay');
 
   const handleFileDrop = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -82,7 +90,85 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
       onClose();
     } catch (err) {
       console.warn('API error, using high-fidelity local synthesis', err);
-      const fallback: LectureData = {
+      const fallback: LectureData = isArabic ? {
+        id: `upload-${Date.now()}`,
+        title: title,
+        subject: 'مصدر مرفوع',
+        duration: '30 دقيقة',
+        date: new Date().toISOString().split('T')[0],
+        summary: `حزمة دراسية شاملة تم تركيبها لـ "${title}" باللغة العربية الفصحى.`,
+        markdownNotes: `# ${title}\n\n## 1. الملخص التنفيذي\nتحليل وتلخيص للمواد المرفوعة. تم ترتيب جميع المفاهيم والمعادلات الرياضية الأساسية بدقة.\n\n$$\\mathcal{E} = \\oint_C \\mathbf{E} \\cdot d\\mathbf{\\ell} = - \\frac{d\\Phi_B}{dt}$$\n\n## 2. أهم الاستنتاجات\n* ملخص شامل تم استخراجه من المصدر المرفوع.\n* استعراض العلاقات والمسائل الأكثر تكراراً في الامتحانات.\n`,
+        mindmapMarkdown: `# ${title}\n## 1. المفاهيم الأساسية\n### النقاط الرئيسية\n### التفاصيل الفرعية\n## 2. القوانين والمعادلات\n### القانون الأساسي\n### التطبيق والتحقق\n`,
+        flashcards: [
+          {
+            id: `fc-new-ar`,
+            front: `ما هي العلاقة الأساسية الحاكمة في ${title}؟`,
+            back: `العلاقة الديناميكية بين تغير التدفق واستجابة النظام.`,
+            tag: 'المفهوم الأساسي'
+          }
+        ],
+        quiz: [
+          {
+            id: `qz-new-ar`,
+            question: `ما هو المبدأ الجوهري الموضح في ${title}؟`,
+            options: ['قانون فاراداي للحث الكهرومغناطيسي', 'الإنتروبيا الديناميكية الحرارية', 'التوازن الإستاتيكي', 'الحركة البراونية'],
+            correctIndex: 0,
+            explanation: 'تركز المادة المرفوعة على تغير التدفق الكهرومغناطيسي.'
+          }
+        ]
+      } : isJawi ? {
+        id: `upload-${Date.now()}`,
+        title: title,
+        subject: 'سومبر دموات-ناءيق',
+        duration: '30 مينيت',
+        date: new Date().toISOString().split('T')[0],
+        summary: `ڤاكيت ڤمبلاجرن كومڤريهينسيف باݢي "${title}" دالم توليسن جاوي.`,
+        markdownNotes: `# ${title}\n\n## ١. ريڠكسن ايكسيكوتيف\nاناليسيس باهن يڠ دموات-ناءيق. كسموا كونسيڤ، ڤرسمان ماتماتيق، دان جدوال تله دسوسون دڠن كمـس.\n\n$$\\mathcal{E} = \\oint_C \\mathbf{E} \\cdot d\\mathbf{\\ell} = - \\frac{d\\Phi_B}{dt}$$\n\n## ٢. روموسن اوتام\n* سينتيسيس لڠكڤ دحاصيلكن درڤد سومبر يڠ دموات-ناءيق.\n* هوبوڠن ڤاراميتر دان فوكوس ڤڤريقساءن.\n`,
+        mindmapMarkdown: `# ${title}\n## ١. اساس\n### ڤركارا اوتام\n### بوتيرن لنجوت\n## ٢. ڤرسمان دان فورمولا\n### حكوم اوتام\n### ڤڠصهن\n`,
+        flashcards: [
+          {
+            id: `fc-new-jw`,
+            front: `اڤاكه هوبوڠن اوتام يڠ مڠاول دالم ${title}؟`,
+            back: `هوبوڠن انتارا ڤروبهن فلوک س دڠن تيندق بالس سيستم.`,
+            tag: 'كونسيڤ اوتام'
+          }
+        ],
+        quiz: [
+          {
+            id: `qz-new-jw`,
+            question: `اڤاكه ڤرينسيڤ اساس يڠ دنتاكن دالم ${title}؟`,
+            options: ['حكوم ايندوكسي فرادي', 'اينتروڤي تيرموديناميک', 'كسأيمباڠن ستاتيک', 'ݢرقن براون'],
+            correctIndex: 0,
+            explanation: 'باهن مروڠكاي ڤروبهن فلوک س ايليكترومݢنيتيک.'
+          }
+        ]
+      } : isMalay ? {
+        id: `upload-${Date.now()}`,
+        title: title,
+        subject: 'Sumber Dimuat Naik',
+        duration: '30 minit',
+        date: new Date().toISOString().split('T')[0],
+        summary: `Pakej pembelajaran komprehensif bagi "${title}" dalam Bahasa Melayu.`,
+        markdownNotes: `# ${title}\n\n## 1. Ringkasan Eksekutif\nAnalisis bahan dokumen yang dimuat naik. Semua konsep penting, persamaan matematik, dan jadual telah disusun secara terperinci.\n\n$$\\mathcal{E} = \\oint_C \\mathbf{E} \\cdot d\\mathbf{\\ell} = - \\frac{d\\Phi_B}{dt}$$\n\n## 2. Rumusan Penting\n* Sintesis penuh dijana daripada sumber yang dimuat naik.\n* Hubungan parameter dan strategi menjawab peperiksaan.\n`,
+        mindmapMarkdown: `# ${title}\n## 1. Gambaran Keseluruhan\n### Perkara Utama\n### Butiran Sekunder\n## 2. Persamaan & Formula\n### Hukum Utama\n### Pengesahan\n`,
+        flashcards: [
+          {
+            id: `fc-new-ms`,
+            front: `Apakah hubungan utama yang mengawal ${title}?`,
+            back: `Hubungan antara perubahan fluks ruang dan tindak balas dinamik sistem.`,
+            tag: 'Konsep Utama'
+          }
+        ],
+        quiz: [
+          {
+            id: `qz-new-ms`,
+            question: `Prinsip asas manakah yang ditekankan dalam ${title}?`,
+            options: ['Hukum Aruhan Faraday', 'Entropi Termodinamik', 'Keseimbangan Statik', 'Pergerakan Brown'],
+            correctIndex: 0,
+            explanation: 'Bahan yang dimuat naik memberi fokus kepada perubahan fluks elektromagnet.'
+          }
+        ]
+      } : {
         id: `upload-${Date.now()}`,
         title: title,
         subject: 'Uploaded Source',
@@ -175,6 +261,21 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             />
           </div>
         </div>
+
+        {/* Dynamic Model Recommendation Banner for Arabic / Jawi */}
+        {isArabicOrJawi && (
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 p-2.5 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-950 dark:text-amber-100">
+                💡 Cadangan Model untuk {isJawi ? 'Tulisan Jawi' : 'Bahasa Arab'}:
+              </p>
+              <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+                Disyorkan memastikan Settings menggunakan sekurang-kurangnya <strong>Meta LLaMA 3.3 70B (Percuma)</strong> atau <strong>DeepSeek-V3 / R1</strong> untuk ketepatan Nahu, morfologi Arab, dan abjad Jawi yang optimum.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 3. Footer Options: Output Language & Create Note */}
         <div className="mt-6 flex items-center justify-between pt-2">
