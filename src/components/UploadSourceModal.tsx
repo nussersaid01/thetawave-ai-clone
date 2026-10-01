@@ -39,13 +39,128 @@ function buildIntelligentFallback(
   const p3 = cleanParagraphs[2] || extractedText.slice(700, 1050);
 
   const sentences = extractedText
+    .replace(/[#*`_]/g, ' ')
     .split(/(?<=[.?!])\s+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 20);
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(s => s.length > 25 && !s.startsWith('http'));
 
-  const point1 = sentences[0] || `Key concepts extracted from ${title}.`;
-  const point2 = sentences[1] || `Essential structural principles and practical formulations.`;
-  const point3 = sentences[2] || `Important conclusions and summary evaluation.`;
+  const tags = isMalay 
+    ? ['Konsep Asas', 'Peraturan Utama', 'Aplikasi Praktikal', 'Analisis Data', 'Rumusan Peperiksaan', 'Strategi & Tindakan', 'Mekanisme', 'Definisi Utama', 'Ujian Kefahaman', 'Fokus Ulangkaji', 'Petua Skor', 'Semakan Akhir']
+    : isArabic
+    ? ['المفهوم الأساسي', 'القواعد الحاكمة', 'التطبيق العملي', 'التحليل', 'استنتاجات الامتحان', 'الإستراتيجية', 'الميكانيزم', 'التعريف الجوهري', 'التقييم الذاتي', 'التركيز', 'نصائح الاختبار', 'المراجعة']
+    : isJawi
+    ? ['كونسيڤ اساس', 'ڤراتورن اوتام', 'اڤليكاسي ڤريكتيکل', 'اناليسيس داتا', 'روموسن ڤڤريقساءن', 'ستراتيݢي', 'ميكانيزم', 'ديفينيسي اوتام', 'اوجين كفهمن', 'فوكوس', 'ڤتوا', 'اولسن اخير']
+    : ['Core Concept', 'Fundamental Rule', 'Practical Application', 'Data Analysis', 'Exam Takeaway', 'Execution Strategy', 'Mechanism', 'Key Definition', 'Self-Check', 'High-Yield Review', 'Pro Tip', 'Final Review'];
+
+  // Build 12 diverse flashcards
+  const flashcards = [];
+  const targetCards = 12;
+  const cardStep = Math.max(1, Math.floor(sentences.length / targetCards));
+
+  for (let i = 0; i < targetCards; i++) {
+    const sentIdx = (i * cardStep) % (sentences.length || 1);
+    const s = sentences[sentIdx] || `${title} core principles and systematic methodology.`;
+    const tag = tags[i % tags.length];
+
+    if (isMalay) {
+      flashcards.push({
+        id: `fc-fb-${Date.now()}-${i + 1}`,
+        front: i === 0 ? `Apakah perkara utama yang dihuraikan dalam ${title}?` : `Apakah prinsip atau peraturan penting berkaitan: "${s.slice(0, 50)}..."?`,
+        back: s,
+        tag
+      });
+    } else if (isArabic) {
+      flashcards.push({
+        id: `fc-fb-${Date.now()}-${i + 1}`,
+        front: i === 0 ? `ما هو المحور الأساسي الحاكم في ${title}؟` : `ما هو الشرح والتحليل المستخلص بشأن: "${s.slice(0, 50)}..."؟`,
+        back: s,
+        tag
+      });
+    } else if (isJawi) {
+      flashcards.push({
+        id: `fc-fb-${Date.now()}-${i + 1}`,
+        front: i === 0 ? `اڤاكه ڤركارا اساس دالم ${title}؟` : `اڤاكه هوراين دان ڤرينسيڤ اوتام بركأيتن: "${s.slice(0, 50)}..."؟`,
+        back: s,
+        tag
+      });
+    } else {
+      flashcards.push({
+        id: `fc-fb-${Date.now()}-${i + 1}`,
+        front: i === 0 ? `What is the core focus of ${title}?` : `What key rule or takeaway applies to: "${s.slice(0, 50)}..."?`,
+        back: s,
+        tag
+      });
+    }
+  }
+
+  // Build 6 exam-style quiz questions
+  const quiz = [];
+  const targetQuiz = 6;
+  const qStep = Math.max(1, Math.floor(sentences.length / targetQuiz));
+
+  for (let j = 0; j < targetQuiz; j++) {
+    const qSentIdx = (j * qStep + 1) % (sentences.length || 1);
+    const s = sentences[qSentIdx] || `${title} systematic verification framework.`;
+    const cleanAnswer = s.length > 85 ? s.slice(0, 85) + '...' : s;
+
+    if (isMalay) {
+      quiz.push({
+        id: `qz-fb-${Date.now()}-${j + 1}`,
+        question: `Berdasarkan nota pembelajaran "${title}", manakah antara berikut kenyataan yang BENAR?`,
+        options: [
+          cleanAnswer,
+          'Kenyataan ini bercanggah dengan prinsip utama yang telah digariskan.',
+          'Konsep ini merupakan andaian sementara yang belum dibuktikan.',
+          'Prinsip ini tidak diguna pakai dalam pelaksanaan praktikal.'
+        ],
+        correctIndex: 0,
+        explanation: `Diekstrak terus daripada bahan rujukan: "${s}"`
+      });
+    } else if (isArabic) {
+      quiz.push({
+        id: `qz-fb-${Date.now()}-${j + 1}`,
+        question: `بناءً على دراسة "${title}"، أي من العبارات التالية تعتبر صحيحة تماماً؟`,
+        options: [
+          cleanAnswer,
+          'هذا المفهوم يتعارض تماماً مع المبادئ التأسيسية للمرجع.',
+          'الفرضية المذكورة غير مؤكدة ولم يتم إثباتها تجريبياً.',
+          'تم استبعاد هذه النقطة في أحدث أطر التحليل.'
+        ],
+        correctIndex: 0,
+        explanation: `مستخرج مباشرة من النص الأكاديمي: "${s}"`
+      });
+    } else if (isJawi) {
+      quiz.push({
+        id: `qz-fb-${Date.now()}-${j + 1}`,
+        question: `برداسركن ڤمبلاجرن "${title}"، ماناكه انتارا برايكوت كڽاتاءن يڠ بنر؟`,
+        options: [
+          cleanAnswer,
+          'كڽاتاءن اين برتنتڠن دڠن ڤرينسيڤ اساس دالم باهن.',
+          'كونسيڤ اين تيدق دصحكن دالم كاجين.',
+          'ڤركارا اين تله دڤادمكن درڤد اناليسيس تركيني.'
+        ],
+        correctIndex: 0,
+        explanation: `دڤتيق لڠسوڠ درڤد باهن: "${s}"`
+      });
+    } else {
+      quiz.push({
+        id: `qz-fb-${Date.now()}-${j + 1}`,
+        question: `Based on the study materials for "${title}", which of the following statements is ACCURATE?`,
+        options: [
+          cleanAnswer,
+          'This statement directly contradicts the core thesis presented in the material.',
+          'This condition is merely hypothetical and lacks empirical backing.',
+          'This rule is obsolete and no longer recommended in standard practice.'
+        ],
+        correctIndex: 0,
+        explanation: `Directly supported by the reference text: "${s}"`
+      });
+    }
+  }
+
+  const s1 = sentences[0] || `${title} core principles.`;
+  const s2 = sentences[1] || `Detailed mechanisms and formulations.`;
+  const s3 = sentences[2] || `Important exam-tested revision takeaways.`;
 
   if (isArabic) {
     return {
@@ -54,32 +169,11 @@ function buildIntelligentFallback(
       subject: sourceType,
       duration: '30 دقيقة',
       date: new Date().toISOString().split('T')[0],
-      summary: `ملخص تنفيذي للمادة المستخرجة من "${title}". تم استخلاص الأفكار الرئيسية وتوثيقها بدقة.`,
-      markdownNotes: `# ${title}\n\n## 1. الملخص التنفيذي\n${p1}\n\n---\n\n## 2. المفاهيم والنقاط الجوهرية\n* ${point1}\n* ${point2}\n* ${point3}\n\n---\n\n## 3. التحليل التفصيلي للمحتوى\n${p2}\n\n${p3}\n\n---\n\n## 4. أهم استنتاجات المراجعة\n* التركيز على الفهم الشامل للنقاط الأساسية المذكورة أعلاه.\n* مراجعة المصطلحات البارزة للامتحانات.\n`,
-      mindmapMarkdown: `# ${title}\n## 1. المقدمة والمفاهيم\n### ${point1.slice(0, 40)}\n## 2. التفاصيل المحورية\n### ${point2.slice(0, 40)}\n## 3. الاستنتاجات\n### ${point3.slice(0, 40)}`,
-      flashcards: [
-        {
-          id: `fc-${Date.now()}-1`,
-          front: `ما هي الفكرة الجوهرية المستخلصة من ${title}؟`,
-          back: point1,
-          tag: 'المفهوم الأساسي'
-        },
-        {
-          id: `fc-${Date.now()}-2`,
-          front: `ما الذي يوضحه هذا المستند بشأن التفاصيل التطبيقية؟`,
-          back: point2,
-          tag: 'التحليل'
-        }
-      ],
-      quiz: [
-        {
-          id: `qz-${Date.now()}-1`,
-          question: `ما هو المحور الأساسي الذي تم استعراضه في ${title}؟`,
-          options: [point1.slice(0, 60), 'موضوع غير مرتبط بالسياق', 'افتراضات عامة فقط', 'بيانات غير مكتملة'],
-          correctIndex: 0,
-          explanation: `تم استخلاص هذا المبدأ مباشرة من الوثيقة المرفوعة: ${point1.slice(0, 100)}`
-        }
-      ]
+      summary: `ملخص تنفيذي شامل للمادة المستخرجة من "${title}". يشتمل على ${flashcards.length} بطاقة استذكار و${quiz.length} أسئلة اختبار تقييمية.`,
+      markdownNotes: `# ${title}\n\n## 1. الملخص التنفيذي\n${p1}\n\n---\n\n## 2. المفاهيم والنقاط الجوهرية\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## 3. التحليل التفصيلي للمحتوى\n${p2}\n\n${p3}\n\n---\n\n## 4. أهم استنتاجات المراجعة\n* التركيز على الفهم الشامل للنقاط الأساسية المذكورة أعلاه.\n* مراجعة المصطلحات البارزة للامتحانات.\n`,
+      mindmapMarkdown: `# ${title}\n## 1. المقدمة والمفاهيم\n### ${s1.slice(0, 40)}\n## 2. التفاصيل المحورية\n### ${s2.slice(0, 40)}\n## 3. الاستنتاجات\n### ${s3.slice(0, 40)}`,
+      flashcards,
+      quiz
     };
   }
 
@@ -90,26 +184,11 @@ function buildIntelligentFallback(
       subject: sourceType,
       duration: '30 مينيت',
       date: new Date().toISOString().split('T')[0],
-      summary: `ريڠكسن ايكسيكوتيف باهن يڠ دايكسترك درڤد "${title}". كسموا كونسيڤ اوتام تله دسوسون كمـس.`,
-      markdownNotes: `# ${title}\n\n## ١. ريڠكسن ايكسيكوتيف\n${p1}\n\n---\n\n## ٢. ڤركارا دان كونسيڤ اوتام\n* ${point1}\n* ${point2}\n* ${point3}\n\n---\n\n## ٣. اناليسيس باهن سمڤادن\n${p2}\n\n${p3}\n\n---\n\n## ٤. روموسن دان اولسن ڤڤريقساءن\n* ڤستيکن كفهمن مندولوم ترهادڤ باهن اين.\n* سيمق كاتيݢوري اوتام سبلوم اوجين.\n`,
-      mindmapMarkdown: `# ${title}\n## ١. اساس\n### ${point1.slice(0, 40)}\n## ٢. بوتيرن لنجوت\n### ${point2.slice(0, 40)}\n## ٣. روموسن\n### ${point3.slice(0, 40)}`,
-      flashcards: [
-        {
-          id: `fc-${Date.now()}-1`,
-          front: `اڤاكه ايسو اوتام دالم ${title}؟`,
-          back: point1,
-          tag: 'كونسيڤ اوتام'
-        }
-      ],
-      quiz: [
-        {
-          id: `qz-${Date.now()}-1`,
-          question: `اڤاكه ڤرينسيڤ اوتام يڠ دتكنكن دالم باهن اين؟`,
-          options: [point1.slice(0, 60), 'ڤركارا لوار كونتيک س', 'تيوري تنڤا بوقتي', 'كسيمڤولن سمنتارا'],
-          correctIndex: 0,
-          explanation: `دڤتيق لڠسوڠ درڤد باهن يڠ دموات-ناءيق: ${point1.slice(0, 100)}`
-        }
-      ]
+      summary: `ريڠكسن ايكسيكوتيف كومڤريهينسيف باهن يڠ دايكسترك درڤد "${title}". دسدياكن ${flashcards.length} كد ايمبسن دان ${quiz.length} سوءالن كوءيز.`,
+      markdownNotes: `# ${title}\n\n## ١. ريڠكسن ايكسيكوتيف\n${p1}\n\n---\n\n## ٢. ڤركارا دان كونسيڤ اوتام\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## ٣. اناليسيس باهن سمڤادن\n${p2}\n\n${p3}\n\n---\n\n## ٤. روموسن دان اولسن ڤڤريقساءن\n* ڤستيکن كفهمن مندولوم ترهادڤ باهن اين.\n* سيمق كاتيݢوري اوتام سبلوم اوجين.\n`,
+      mindmapMarkdown: `# ${title}\n## ١. اساس\n### ${s1.slice(0, 40)}\n## ٢. بوتيرن لنجوت\n### ${s2.slice(0, 40)}\n## ٣. روموسن\n### ${s3.slice(0, 40)}`,
+      flashcards,
+      quiz
     };
   }
 
@@ -120,32 +199,11 @@ function buildIntelligentFallback(
       subject: sourceType,
       duration: '30 minit',
       date: new Date().toISOString().split('T')[0],
-      summary: `Ringkasan analisis bahan yang diekstrak daripada "${title}". Semua konsep utama telah dirumuskan secara tersusun.`,
-      markdownNotes: `# ${title}\n\n## 1. Ringkasan Eksekutif\n${p1}\n\n---\n\n## 2. Konsep & Maklumat Penting\n* ${point1}\n* ${point2}\n* ${point3}\n\n---\n\n## 3. Analisis Terperinci Bahan\n${p2}\n\n${p3}\n\n---\n\n## 4. Rumusan Pembelajaran & Strategi Peperiksaan\n* Pastikan pemahaman kukuh terhadap fakta dan hujah utama di atas.\n* Semak semula istilah dan fokus pada soalan pemahaman.\n`,
-      mindmapMarkdown: `# ${title}\n## 1. Asas & Gambaran Keseluruhan\n### ${point1.slice(0, 50)}\n## 2. Huraian Utama\n### ${point2.slice(0, 50)}\n## 3. Rumusan\n### ${point3.slice(0, 50)}`,
-      flashcards: [
-        {
-          id: `fc-${Date.now()}-1`,
-          front: `Apakah idea utama yang dihuraikan dalam ${title}?`,
-          back: point1,
-          tag: 'Konsep Utama'
-        },
-        {
-          id: `fc-${Date.now()}-2`,
-          front: `Apakah perincian penting berkaitan topik ini?`,
-          back: point2,
-          tag: 'Analisis'
-        }
-      ],
-      quiz: [
-        {
-          id: `qz-${Date.now()}-1`,
-          question: `Apakah perkara utama yang dibincangkan dalam ${title}?`,
-          options: [point1.slice(0, 60), 'Topik lain yang tiada kaitan', 'Kajian awal tanpa kesimpulan', 'Hipotesis tidak sahih'],
-          correctIndex: 0,
-          explanation: `Diekstrak terus daripada bahan rujukan: ${point1.slice(0, 100)}`
-        }
-      ]
+      summary: `Ringkasan analisis komprehensif bagi bahan "${title}". Mengandungi ${flashcards.length} kad imbasan dan ${quiz.length} soalan kuiz penilaian kendiri.`,
+      markdownNotes: `# ${title}\n\n## 1. Ringkasan Eksekutif\n${p1}\n\n---\n\n## 2. Konsep & Maklumat Penting\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## 3. Analisis Terperinci Bahan\n${p2}\n\n${p3}\n\n---\n\n## 4. Rumusan Pembelajaran & Strategi Peperiksaan\n* Pastikan pemahaman kukuh terhadap fakta dan hujah utama di atas.\n* Semak semula istilah dan fokus pada soalan pemahaman.\n`,
+      mindmapMarkdown: `# ${title}\n## 1. Asas & Gambaran Keseluruhan\n### ${s1.slice(0, 50)}\n## 2. Huraian Utama\n### ${s2.slice(0, 50)}\n## 3. Rumusan\n### ${s3.slice(0, 50)}`,
+      flashcards,
+      quiz
     };
   }
 
@@ -155,32 +213,11 @@ function buildIntelligentFallback(
     subject: sourceType,
     duration: '30 mins',
     date: new Date().toISOString().split('T')[0],
-    summary: `Structured academic study package synthesized from "${title}". Real content extracted and organized into key revision modules.`,
-    markdownNotes: `# ${title}\n\n## 1. Executive Summary\n${p1}\n\n---\n\n## 2. Core Concepts & Highlights\n* ${point1}\n* ${point2}\n* ${point3}\n\n---\n\n## 3. In-Depth Source Analysis\n${p2}\n\n${p3}\n\n---\n\n## 4. Revision Takeaways & Exam Strategy\n* Master the core arguments and formulations extracted directly from the reference material.\n* Test your retention using the generated flashcards and self-assessment quiz.\n`,
-    mindmapMarkdown: `# ${title}\n## 1. Overview & Fundamentals\n### ${point1.slice(0, 50)}\n## 2. Key Insights\n### ${point2.slice(0, 50)}\n## 3. Conclusions\n### ${point3.slice(0, 50)}`,
-    flashcards: [
-      {
-        id: `fc-${Date.now()}-1`,
-        front: `What is the primary concept discussed in ${title}?`,
-        back: point1,
-        tag: 'Core Concept'
-      },
-      {
-        id: `fc-${Date.now()}-2`,
-        front: `What key evidence or analytical point is highlighted in the text?`,
-        back: point2,
-        tag: 'Key Analysis'
-      }
-    ],
-    quiz: [
-      {
-        id: `qz-${Date.now()}-1`,
-        question: `Which fundamental insight is emphasized in ${title}?`,
-        options: [point1.slice(0, 60), 'Unrelated tangential claims', 'Unverified assumptions', 'Historical anecdotes only'],
-        correctIndex: 0,
-        explanation: `Extracted directly from the source text: ${point1.slice(0, 100)}`
-      }
-    ]
+    summary: `Comprehensive academic study package synthesized from "${title}". Features ${flashcards.length} high-yield flashcards and ${quiz.length} exam-style assessment questions.`,
+    markdownNotes: `# ${title}\n\n## 1. Executive Summary\n${p1}\n\n---\n\n## 2. Core Concepts & Highlights\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## 3. In-Depth Source Analysis\n${p2}\n\n${p3}\n\n---\n\n## 4. Revision Takeaways & Exam Strategy\n* Master the core arguments and formulations extracted directly from the reference material.\n* Test your retention using the generated flashcards and self-assessment quiz.\n`,
+    mindmapMarkdown: `# ${title}\n## 1. Overview & Fundamentals\n### ${s1.slice(0, 50)}\n## 2. Key Insights\n### ${s2.slice(0, 50)}\n## 3. Conclusions\n### ${s3.slice(0, 50)}`,
+    flashcards,
+    quiz
   };
 }
 

@@ -190,35 +190,60 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         const cleanParas = extractedText.split(/\n\s*\n/).filter(p => p.length > 25);
         const p1 = cleanParas[0] || extractedText.slice(0, 350);
         const p2 = cleanParas[1] || extractedText.slice(350, 700);
-        const sentences = extractedText.split(/(?<=[.?!])\s+/).filter(s => s.length > 20);
-        const point1 = sentences[0] || `Key concepts extracted from ${title}.`;
-        const point2 = sentences[1] || `Analytical framework and detailed study findings.`;
+        const sentences = extractedText
+          .replace(/[#*`_]/g, ' ')
+          .split(/(?<=[.?!])\s+/)
+          .map(s => s.replace(/\s+/g, ' ').trim())
+          .filter(s => s.length > 25 && !s.startsWith('http'));
+
+        const tags = ['Core Concept', 'Fundamental Rule', 'Practical Application', 'Data Analysis', 'Exam Takeaway', 'Execution Strategy', 'Mechanism', 'Key Definition', 'Self-Check', 'High-Yield Review', 'Pro Tip', 'Final Review'];
+        const flashcards = [];
+        const targetCards = 12;
+        const cardStep = Math.max(1, Math.floor(sentences.length / targetCards));
+
+        for (let i = 0; i < targetCards; i++) {
+          const sentIdx = (i * cardStep) % (sentences.length || 1);
+          const s = sentences[sentIdx] || `${title} core principles and systematic methodology.`;
+          flashcards.push({
+            id: `fc-up-${Date.now()}-${i + 1}`,
+            front: i === 0 ? `What is the core focus of ${title}?` : `What key rule or finding applies to: "${s.slice(0, 50)}..."?`,
+            back: s,
+            tag: tags[i % tags.length]
+          });
+        }
+
+        const quiz = [];
+        const targetQuiz = 6;
+        const qStep = Math.max(1, Math.floor(sentences.length / targetQuiz));
+
+        for (let j = 0; j < targetQuiz; j++) {
+          const qSentIdx = (j * qStep + 1) % (sentences.length || 1);
+          const s = sentences[qSentIdx] || `${title} systematic verification framework.`;
+          const cleanAnswer = s.length > 85 ? s.slice(0, 85) + '...' : s;
+          quiz.push({
+            id: `qz-up-${Date.now()}-${j + 1}`,
+            question: `Based on the study materials for "${title}", which statement is ACCURATE?`,
+            options: [
+              cleanAnswer,
+              'This statement directly contradicts the core thesis presented in the material.',
+              'This condition is merely hypothetical and lacks empirical backing.',
+              'This rule is obsolete and no longer recommended in standard practice.'
+            ],
+            correctIndex: 0,
+            explanation: `Directly supported by the reference text: "${s}"`
+          });
+        }
 
         const fallback: LectureData = {
           id: `upload-${Date.now()}`,
           title: title,
           subject: sourceType,
           date: new Date().toISOString().split('T')[0],
-          summary: `Summary extracted directly from ${title}: ${point1}`,
-          markdownNotes: `# ${title}\n\n## 1. Overview\n${p1}\n\n## 2. Key Insights\n* ${point1}\n* ${point2}\n\n## 3. Detailed Content\n${p2}\n`,
-          mindmapMarkdown: `# ${title}\n## 1. Chapter Summary\n### ${point1.slice(0, 40)}\n## 2. Detailed Breakdown\n### ${point2.slice(0, 40)}\n`,
-          flashcards: [
-            {
-              id: `fc-up-${Date.now()}`,
-              front: `What is the core focus of ${title}?`,
-              back: point1,
-              tag: 'Core Concept'
-            }
-          ],
-          quiz: [
-            {
-              id: `qz-up-${Date.now()}`,
-              question: `Which fundamental point is established in ${title}?`,
-              options: [point1.slice(0, 50), 'Unrelated topic', 'Unverified hypothesis', 'Preliminary survey only'],
-              correctIndex: 0,
-              explanation: `Directly stated in the uploaded content: ${point1.slice(0, 100)}`
-            }
-          ]
+          summary: `Comprehensive academic study package synthesized from "${title}". Features ${flashcards.length} high-yield flashcards and ${quiz.length} exam-style assessment questions.`,
+          markdownNotes: `# ${title}\n\n## 1. Overview\n${p1}\n\n## 2. Key Insights\n* ${sentences[0] || 'Core principles'}\n* ${sentences[1] || 'Essential rules'}\n\n## 3. Detailed Content\n${p2}\n`,
+          mindmapMarkdown: `# ${title}\n## 1. Chapter Summary\n### ${(sentences[0] || title).slice(0, 40)}\n## 2. Detailed Breakdown\n### ${(sentences[1] || title).slice(0, 40)}\n`,
+          flashcards,
+          quiz
         };
         onLectureCreated(fallback);
         onClose();

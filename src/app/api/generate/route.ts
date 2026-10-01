@@ -1,6 +1,150 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { LectureData } from '@/types';
+import { LectureData, Flashcard, QuizQuestion } from '@/types';
 import { callAICompletion } from '@/lib/aiProvider';
+
+function enrichStudyDeck(
+  lectureTitle: string,
+  rawContent: string,
+  language: string,
+  initialCards: Flashcard[] = [],
+  initialQuiz: QuizQuestion[] = []
+): { flashcards: Flashcard[]; quiz: QuizQuestion[] } {
+  const isMalay = language.toLowerCase().includes('melayu') || language.toLowerCase().includes('malay');
+  const isArabic = language.toLowerCase().includes('arabic') || language.includes('العربية');
+  const isJawi = language.toLowerCase().includes('jawi') || language.includes('جاوي');
+
+  const flashcards = [...initialCards];
+  const quiz = [...initialQuiz];
+
+  // Extract clean meaningful sentences from document text
+  const cleanSentences = rawContent
+    .replace(/[#*`_]/g, ' ')
+    .split(/(?<=[.?!])\s+/)
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(s => s.length > 25 && !s.startsWith('http') && !s.includes('data:image'));
+
+  const tags = isMalay 
+    ? ['Konsep Asas', 'Peraturan Utama', 'Aplikasi Praktikal', 'Analisis Data', 'Rumusan Peperiksaan', 'Strategi & Tindakan', 'Mekanisme', 'Definisi Utama', 'Ujian Kefahaman', 'Fokus Ulangkaji']
+    : isArabic
+    ? ['المفهوم الأساسي', 'القواعد الحاكمة', 'التطبيق العملي', 'التحليل', 'استنتاجات الامتحان', 'الإستراتيجية', 'الميكانيزم', 'التعريف الجوهري', 'التقييم الذاتي', 'التركيز']
+    : isJawi
+    ? ['كونسيڤ اساس', 'ڤراتورن اوتام', 'اڤليكاسي ڤريكتيکل', 'اناليسيس داتا', 'روموسن ڤڤريقساءن', 'ستراتيݢي', 'ميكانيزم', 'ديفينيسي اوتام', 'اوجين كفهمن', 'فوكوس']
+    : ['Core Concept', 'Fundamental Rule', 'Practical Application', 'Data Analysis', 'Exam Takeaway', 'Execution Strategy', 'Mechanism', 'Key Definition', 'Self-Check', 'High-Yield Review'];
+
+  // 1. Expand flashcards up to at least 12 items
+  let sentIdx = 0;
+  while (flashcards.length < 12 && sentIdx < cleanSentences.length) {
+    const s = cleanSentences[sentIdx];
+    const tag = tags[flashcards.length % tags.length];
+    const cardId = `fc-rich-${Date.now()}-${flashcards.length + 1}`;
+
+    if (isMalay) {
+      flashcards.push({
+        id: cardId,
+        front: flashcards.length === 0 
+          ? `Apakah idea atau hukum utama yang dihuraikan dalam ${lectureTitle}?`
+          : `Apakah huraian dan prinsip utama berkaitan perkara berikut: "${s.slice(0, 55)}..."?`,
+        back: s,
+        tag
+      });
+    } else if (isArabic) {
+      flashcards.push({
+        id: cardId,
+        front: flashcards.length === 0
+          ? `ما هو المبدأ الجوهري الحاكم في ${lectureTitle}؟`
+          : `ما هو الشرح والتحليل المستخلص بشأن: "${s.slice(0, 55)}..."؟`,
+        back: s,
+        tag
+      });
+    } else if (isJawi) {
+      flashcards.push({
+        id: cardId,
+        front: flashcards.length === 0
+          ? `اڤاكه ايديا اتاو حكوم اوتام دالم ${lectureTitle}؟`
+          : `اڤاكه هوراين دان ڤرينسيڤ اوتام بركأيتن: "${s.slice(0, 55)}..."؟`,
+        back: s,
+        tag
+      });
+    } else {
+      flashcards.push({
+        id: cardId,
+        front: flashcards.length === 0
+          ? `What is the primary governing principle in ${lectureTitle}?`
+          : `What key rule or takeaway applies to: "${s.slice(0, 55)}..."?`,
+        back: s,
+        tag
+      });
+    }
+    sentIdx = (sentIdx + 2) % (cleanSentences.length || 1);
+    if (sentIdx === 0 && cleanSentences.length < 5) break;
+  }
+
+  // 2. Expand quiz questions up to at least 6 items
+  let qSentIdx = 1;
+  while (quiz.length < 6 && qSentIdx < cleanSentences.length) {
+    const s = cleanSentences[qSentIdx];
+    const qId = `qz-rich-${Date.now()}-${quiz.length + 1}`;
+    const cleanAnswer = s.length > 90 ? s.slice(0, 90) + '...' : s;
+
+    if (isMalay) {
+      quiz.push({
+        id: qId,
+        question: `Berdasarkan pembelajaran "${lectureTitle}", manakah antara berikut kenyataan yang BENAR?`,
+        options: [
+          cleanAnswer,
+          'Kenyataan ini bertentangan dengan prinsip asal yang digariskan dalam rujukan.',
+          'Konsep ini hanya terpakai secara terhad dan tidak disahkan secara empirikal.',
+          'Prinsip ini telah dimansuhkan dalam analisis terkini.'
+        ],
+        correctIndex: 0,
+        explanation: `Diekstrak terus daripada bahan rujukan: "${s}"`
+      });
+    } else if (isArabic) {
+      quiz.push({
+        id: qId,
+        question: `بناءً على دراسة "${lectureTitle}"، أي من العبارات التالية تعتبر صحيحة تماماً؟`,
+        options: [
+          cleanAnswer,
+          'هذا المفهوم يتعارض تماماً مع المبادئ التأسيسية للمرجع.',
+          'الفرضية المذكورة غير مؤكدة ولم يتم إثباتها تجريبياً.',
+          'تم استبعاد هذه النقطة في أحدث أطر التحليل.'
+        ],
+        correctIndex: 0,
+        explanation: `مستخرج مباشرة من النص الأكاديمي: "${s}"`
+      });
+    } else if (isJawi) {
+      quiz.push({
+        id: qId,
+        question: `برداسركن ڤمبلاجرن "${lectureTitle}"، ماناكه انتارا برايكوت كڽاتاءن يڠ بنر؟`,
+        options: [
+          cleanAnswer,
+          'كڽاتاءن اين برتنتڠن دڠن ڤرينسيڤ اساس دالم باهن.',
+          'كونسيڤ اين تيدق دصحكن دالم كاجين.',
+          'ڤركارا اين تله دڤادمكن درڤد اناليسيس تركيني.'
+        ],
+        correctIndex: 0,
+        explanation: `دڤتيق لڠسوڠ درڤد باهن: "${s}"`
+      });
+    } else {
+      quiz.push({
+        id: qId,
+        question: `Based on the study materials for "${lectureTitle}", which of the following is ACCURATE?`,
+        options: [
+          cleanAnswer,
+          'This statement directly contradicts the core thesis presented in the material.',
+          'This condition is merely hypothetical and lacks empirical backing.',
+          'This rule is obsolete and no longer recommended in standard practice.'
+        ],
+        correctIndex: 0,
+        explanation: `Directly supported by the study text: "${s}"`
+      });
+    }
+    qSentIdx = (qSentIdx + 3) % (cleanSentences.length || 1);
+    if (qSentIdx === 1 && cleanSentences.length < 5) break;
+  }
+
+  return { flashcards, quiz };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,23 +188,54 @@ DO NOT use Rumi (Latin letters) except for universal math symbols or chemical fo
 DO NOT use English except for universal math symbols, chemical symbols, or equations.`;
     }
 
-    const prompt = `You are an elite academic AI assistant. Analyze this lecture topic and materials:
+    const prompt = `You are an elite academic professor and study coach.
+Analyze the following lecture topic and detailed reference materials:
 Title: ${lectureTitle}
 Subject: ${lectureSubject}
-Transcript / Notes: ${sampleTranscript || lectureTitle}
+Transcript / Content: ${sampleTranscript || lectureTitle}
 
 ${languageDirective}
 
+MANDATORY QUANTITY & RIGOR REQUIREMENTS:
+1. "summary": A comprehensive 3-5 sentence executive TL;DR in ${outputLanguage}.
+2. "markdownNotes": In-depth, exhaustive notes in Markdown with at least 5 structured sections (Definitions, Governing Principles, Step-by-Step Mechanisms, Real-World Examples/Applications, and High-Yield Exam Review). Use Markdown tables and LaTeX math where applicable.
+3. "mindmapMarkdown": A rich hierarchical mindmap with 4-6 main topic branches and 2-3 subnodes per branch.
+4. "flashcards": You MUST generate AT LEAST 10 TO 15 HIGH-YIELD FLASHCARDS!
+   - Each flashcard must test a distinct key term, rule, definition, formula, or concept from the content.
+   - "front": Clear, focused question or prompt.
+   - "back": Comprehensive, clear explanation.
+   - "tag": Subtopic or category tag.
+   - DO NOT generate fewer than 10 flashcards!
+5. "quiz": You MUST generate AT LEAST 5 TO 8 MULTIPLE-CHOICE EXAM QUESTIONS!
+   - Each question must have 4 distinct, plausible options.
+   - "correctIndex": 0, 1, 2, or 3 corresponding to the correct answer.
+   - "explanation": In-depth explanation of why the correct option is right and why the distractors are wrong.
+   - DO NOT generate fewer than 5 quiz questions!
+
 Generate a comprehensive JSON object matching this schema:
 {
-  "summary": "2-3 sentence executive TL;DR in ${outputLanguage}",
-  "markdownNotes": "# Title\\n\\n## 1. Overview... (Use Markdown, tables, and LaTeX math $...$ and $$...$$ for any equations)",
-  "mindmapMarkdown": "# Central Topic\\n## 1. Subtopic A\\n### Detail 1\\n## 2. Subtopic B",
+  "summary": "3-5 sentence executive summary in ${outputLanguage}",
+  "markdownNotes": "# Title\\n\\n## 1. Overview...",
+  "mindmapMarkdown": "# Central Topic\\n## Branch 1\\n### Sub 1...",
   "flashcards": [
-    { "id": "fc-1", "front": "Question/Concept", "back": "Detailed answer", "tag": "Category" }
+    { "id": "fc-1", "front": "Concept / Question 1", "back": "Detailed answer 1", "tag": "Core Concept" },
+    { "id": "fc-2", "front": "Concept / Question 2", "back": "Detailed answer 2", "tag": "Rule & Principle" },
+    { "id": "fc-3", "front": "Concept / Question 3", "back": "Detailed answer 3", "tag": "Application" },
+    { "id": "fc-4", "front": "Concept / Question 4", "back": "Detailed answer 4", "tag": "Analysis" },
+    { "id": "fc-5", "front": "Concept / Question 5", "back": "Detailed answer 5", "tag": "Key Term" },
+    { "id": "fc-6", "front": "Concept / Question 6", "back": "Detailed answer 6", "tag": "Mechanism" },
+    { "id": "fc-7", "front": "Concept / Question 7", "back": "Detailed answer 7", "tag": "Strategy" },
+    { "id": "fc-8", "front": "Concept / Question 8", "back": "Detailed answer 8", "tag": "Exam Review" },
+    { "id": "fc-9", "front": "Concept / Question 9", "back": "Detailed answer 9", "tag": "Formula & Method" },
+    { "id": "fc-10", "front": "Concept / Question 10", "back": "Detailed answer 10", "tag": "Summary" }
   ],
   "quiz": [
-    { "id": "qz-1", "question": "Question text?", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Why A is correct" }
+    { "id": "qz-1", "question": "Question 1?", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Why correct" },
+    { "id": "qz-2", "question": "Question 2?", "options": ["A", "B", "C", "D"], "correctIndex": 1, "explanation": "Why correct" },
+    { "id": "qz-3", "question": "Question 3?", "options": ["A", "B", "C", "D"], "correctIndex": 2, "explanation": "Why correct" },
+    { "id": "qz-4", "question": "Question 4?", "options": ["A", "B", "C", "D"], "correctIndex": 3, "explanation": "Why correct" },
+    { "id": "qz-5", "question": "Question 5?", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Why correct" },
+    { "id": "qz-6", "question": "Question 6?", "options": ["A", "B", "C", "D"], "correctIndex": 1, "explanation": "Why correct" }
   ]
 }
 
@@ -78,6 +253,17 @@ Return ONLY raw valid JSON.`;
         const jsonStr = jsonMatch ? jsonMatch[0] : cleaned;
         const parsed = JSON.parse(jsonStr);
 
+        const rawCards: Flashcard[] = Array.isArray(parsed.flashcards) ? parsed.flashcards : [];
+        const rawQuiz: QuizQuestion[] = Array.isArray(parsed.quiz) ? parsed.quiz : [];
+
+        const enriched = enrichStudyDeck(
+          lectureTitle,
+          (sampleTranscript || '') + '\n\n' + (parsed.markdownNotes || ''),
+          outputLanguage,
+          rawCards,
+          rawQuiz
+        );
+
         const completeLecture: LectureData = {
           id: `lec-${Date.now()}`,
           title: lectureTitle,
@@ -87,8 +273,8 @@ Return ONLY raw valid JSON.`;
           summary: parsed.summary,
           markdownNotes: parsed.markdownNotes,
           mindmapMarkdown: parsed.mindmapMarkdown,
-          flashcards: parsed.flashcards,
-          quiz: parsed.quiz
+          flashcards: enriched.flashcards,
+          quiz: enriched.quiz
         };
 
         return NextResponse.json(completeLecture);
@@ -117,6 +303,14 @@ Return ONLY raw valid JSON.`;
       const s2 = sentences[1] || `Detailed examination of governing formulations and analytical points.`;
       const s3 = sentences[2] || `Conclusions and examination-tested review takeaways.`;
 
+      const enriched = enrichStudyDeck(
+        lectureTitle,
+        sampleTranscript,
+        outputLanguage,
+        [],
+        []
+      );
+
       if (isArabic) {
         return NextResponse.json({
           id: `lec-${Date.now()}`,
@@ -124,22 +318,11 @@ Return ONLY raw valid JSON.`;
           subject: lectureSubject,
           duration: '45 دقيقة',
           date: new Date().toISOString().split('T')[0],
-          summary: `ملخص تنفيذي للمادة المستخرجة من "${lectureTitle}". تم استخلاص الأفكار الرئيسية وتوثيقها بدقة.`,
+          summary: `ملخص تنفيذي شامل للمادة المستخرجة من "${lectureTitle}". تم استخلاص ${enriched.flashcards.length} بطاقة تعليمية و${enriched.quiz.length} أسئلة اختبار تقييمية.`,
           markdownNotes: `# ${lectureTitle}\n\n## 1. الملخص التنفيذي\n${p1}\n\n---\n\n## 2. المفاهيم والنقاط الجوهرية\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## 3. التحليل التفصيلي للمحتوى\n${p2}\n\n${p3}\n\n---\n\n## 4. أهم استنتاجات المراجعة\n* التركيز على الفهم الشامل للنقاط الأساسية المستخرجة.\n* مراجعة المصطلحات البارزة للامتحانات.\n`,
           mindmapMarkdown: `# ${lectureTitle}\n## 1. المقدمة والمفاهيم\n### ${s1.slice(0, 40)}\n## 2. التفاصيل المحورية\n### ${s2.slice(0, 40)}\n## 3. الاستنتاجات\n### ${s3.slice(0, 40)}`,
-          flashcards: [
-            { id: `fc-ar-real-1`, front: `ما هي الفكرة الجوهرية في ${lectureTitle}؟`, back: s1, tag: 'المفهوم الأساسي' },
-            { id: `fc-ar-real-2`, front: `ما التحليل الأساسي الموضح في النص؟`, back: s2, tag: 'التحليل' }
-          ],
-          quiz: [
-            {
-              id: `qz-ar-real-1`,
-              question: `ما هو المحور الأساسي الذي تم استعراضه في ${lectureTitle}؟`,
-              options: [s1.slice(0, 60), 'موضوع غير مرتبط بالسياق', 'افتراضات عامة فقط', 'بيانات غير مكتملة'],
-              correctIndex: 0,
-              explanation: `مستخرج مباشرة من النص: ${s1.slice(0, 100)}`
-            }
-          ]
+          flashcards: enriched.flashcards,
+          quiz: enriched.quiz
         });
       }
 
@@ -150,21 +333,11 @@ Return ONLY raw valid JSON.`;
           subject: lectureSubject,
           duration: '45 مينيت',
           date: new Date().toISOString().split('T')[0],
-          summary: `ريڠكسن ايكسيكوتيف باهن يڠ دايكسترك درڤد "${lectureTitle}". كسموا كونسيڤ اوتام تله دسوسون كمـس.`,
+          summary: `ريڠكسن ايكسيكوتيف كومڤريهينسيف باهن يڠ دايكسترك درڤد "${lectureTitle}". دسدياكن ${enriched.flashcards.length} كد ايمبسن دان ${enriched.quiz.length} سوءالن كوءيز.`,
           markdownNotes: `# ${lectureTitle}\n\n## ١. ريڠكسن ايكسيكوتيف\n${p1}\n\n---\n\n## ٢. ڤركارا دان كونسيڤ اوتام\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## ٣. اناليسيس باهن سمڤادن\n${p2}\n\n${p3}\n\n---\n\n## ٤. روموسن دان اولسن ڤڤريقساءن\n* ڤستيکن كفهمن مندولوم ترهادڤ باهن اين.\n* سيمق كاتيݢوري اوتام سبلوم اوجين.\n`,
           mindmapMarkdown: `# ${lectureTitle}\n## ١. اساس\n### ${s1.slice(0, 40)}\n## ٢. بوتيرن لنجوت\n### ${s2.slice(0, 40)}\n## ٣. روموسن\n### ${s3.slice(0, 40)}`,
-          flashcards: [
-            { id: `fc-jw-real-1`, front: `اڤاكه ايسو اوتام دالم ${lectureTitle}؟`, back: s1, tag: 'كونسيڤ اوتام' }
-          ],
-          quiz: [
-            {
-              id: `qz-jw-real-1`,
-              question: `اڤاكه ڤرينسيڤ اوتام يڠ دتكنكن دالم باهن اين؟`,
-              options: [s1.slice(0, 60), 'ڤركارا لوار كونتيک س', 'تيوري تنڤا بوقتي', 'كسيمڤولن سمنتارا'],
-              correctIndex: 0,
-              explanation: `دڤتيق لڠسوڠ درڤد باهن: ${s1.slice(0, 100)}`
-            }
-          ]
+          flashcards: enriched.flashcards,
+          quiz: enriched.quiz
         });
       }
 
@@ -175,22 +348,11 @@ Return ONLY raw valid JSON.`;
           subject: lectureSubject,
           duration: '45 minit',
           date: new Date().toISOString().split('T')[0],
-          summary: `Ringkasan analisis bahan yang diekstrak daripada "${lectureTitle}". Semua konsep penting telah dirumuskan secara terperinci.`,
+          summary: `Ringkasan analisis komprehensif bagi bahan "${lectureTitle}". Mengandungi ${enriched.flashcards.length} kad imbasan dan ${enriched.quiz.length} soalan kuiz penilaian kendiri.`,
           markdownNotes: `# ${lectureTitle}\n\n## 1. Ringkasan Eksekutif\n${p1}\n\n---\n\n## 2. Konsep & Maklumat Penting\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## 3. Analisis Terperinci Bahan\n${p2}\n\n${p3}\n\n---\n\n## 4. Rumusan Pembelajaran & Strategi Peperiksaan\n* Pastikan pemahaman kukuh terhadap fakta dan hujah utama di atas.\n* Semak semula istilah dan fokus pada soalan pemahaman.\n`,
           mindmapMarkdown: `# ${lectureTitle}\n## 1. Asas & Gambaran Keseluruhan\n### ${s1.slice(0, 50)}\n## 2. Huraian Utama\n### ${s2.slice(0, 50)}\n## 3. Rumusan\n### ${s3.slice(0, 50)}`,
-          flashcards: [
-            { id: `fc-ms-real-1`, front: `Apakah idea utama yang dihuraikan dalam ${lectureTitle}?`, back: s1, tag: 'Konsep Utama' },
-            { id: `fc-ms-real-2`, front: `Apakah perincian penting berkaitan topik ini?`, back: s2, tag: 'Analisis' }
-          ],
-          quiz: [
-            {
-              id: `qz-ms-real-1`,
-              question: `Apakah perkara utama yang dibincangkan dalam ${lectureTitle}?`,
-              options: [s1.slice(0, 60), 'Topik lain yang tiada kaitan', 'Kajian awal tanpa kesimpulan', 'Hipotesis tidak sahih'],
-              correctIndex: 0,
-              explanation: `Diekstrak terus daripada bahan rujukan: ${s1.slice(0, 100)}`
-            }
-          ]
+          flashcards: enriched.flashcards,
+          quiz: enriched.quiz
         });
       }
 
@@ -201,22 +363,11 @@ Return ONLY raw valid JSON.`;
         subject: lectureSubject,
         duration: '45 mins',
         date: new Date().toISOString().split('T')[0],
-        summary: `Structured academic study package synthesized from "${lectureTitle}". Real content extracted and organized into key revision modules.`,
+        summary: `Comprehensive academic study package synthesized from "${lectureTitle}". Features ${enriched.flashcards.length} high-yield flashcards and ${enriched.quiz.length} exam-style assessment questions.`,
         markdownNotes: `# ${lectureTitle}\n\n## 1. Executive Summary\n${p1}\n\n---\n\n## 2. Core Concepts & Highlights\n* ${s1}\n* ${s2}\n* ${s3}\n\n---\n\n## 3. In-Depth Source Analysis\n${p2}\n\n${p3}\n\n---\n\n## 4. Revision Takeaways & Exam Strategy\n* Master the core arguments and formulations extracted directly from the reference material.\n* Test your retention using the generated flashcards and self-assessment quiz.\n`,
         mindmapMarkdown: `# ${lectureTitle}\n## 1. Overview & Fundamentals\n### ${s1.slice(0, 50)}\n## 2. Key Insights\n### ${s2.slice(0, 50)}\n## 3. Conclusions\n### ${s3.slice(0, 50)}`,
-        flashcards: [
-          { id: `fc-en-real-1`, front: `What is the primary concept discussed in ${lectureTitle}?`, back: s1, tag: 'Core Concept' },
-          { id: `fc-en-real-2`, front: `What key evidence or analytical point is highlighted in the text?`, back: s2, tag: 'Key Analysis' }
-        ],
-        quiz: [
-          {
-            id: `qz-en-real-1`,
-            question: `Which fundamental insight is emphasized in ${lectureTitle}?`,
-            options: [s1.slice(0, 60), 'Unrelated tangential claims', 'Unverified assumptions', 'Historical anecdotes only'],
-            correctIndex: 0,
-            explanation: `Extracted directly from the source text: ${s1.slice(0, 100)}`
-          }
-        ]
+        flashcards: enriched.flashcards,
+        quiz: enriched.quiz
       });
     }
 
