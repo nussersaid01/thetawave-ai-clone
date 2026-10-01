@@ -43,7 +43,7 @@
     - ☕ **Deruan Lembut (Deep Brown Noise)**: Warm, soothing ambient air/waterfall blanket for deep focus.
     - 🎧 **Theta Wave 6Hz**: Embedded gentle binaural pulse within a warm acoustic noise bed.
   - **Completion Chime**: Tibetan singing bowl harmonic chime with exponential decay triggered when timer reaches 00:00.
-  - **UI Controls**: Preset sound chips, volume slider (5% - 100%), "Uji Loceng Tamat Sesi" button, and smooth SVG animated progress ring in `src/components/GoFocusView.tsx`.
+  - **UI Controls & English Localization**: Adheres strictly to the English UI mandate — preset sound chips (`Cozy Rain`, `Ocean Waves`, `Deep Brown Noise`, `Theta Wave 6Hz`), `Volume:`, `Test Completion Bell`, and scientific advice in English, with smooth SVG animated progress ring in `src/components/GoFocusView.tsx`.
 
 ## 3. Dynamic 4-Tier AI Engine & Workspace Model Selection
 - **Tier Architecture (Ordered by Capability - 2 Free on Top, 2 Paid on Bottom)**:
