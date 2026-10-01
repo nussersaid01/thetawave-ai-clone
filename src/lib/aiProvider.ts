@@ -21,7 +21,7 @@ interface ChatParams {
   markdownNotes?: string;
 }
 
-export async function callAICompletion(prompt: string, jsonMode = false): Promise<string | null> {
+export async function callAICompletion(prompt: string, jsonMode = false, requestedModel?: string): Promise<string | null> {
   const geminiRaw = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const openrouterKey = process.env.OPENROUTER_API_KEY || (geminiRaw?.startsWith('sk-or-v1-') ? geminiRaw : undefined);
   const groqKey = process.env.GROQ_API_KEY || (geminiRaw?.startsWith('gsk_') ? geminiRaw : undefined);
@@ -29,11 +29,16 @@ export async function callAICompletion(prompt: string, jsonMode = false): Promis
   const geminiKey = geminiRaw && !geminiRaw.startsWith('sk-or-v1-') && !geminiRaw.startsWith('gsk_') ? geminiRaw : undefined;
   const genericKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
 
-  // 1. OpenRouter (Supports DeepSeek-V3, Llama 3.3 70B, DeepSeek-R1)
+  // 1. OpenRouter (Supports Free LLaMA 3.3 70B, Gemini 2.0 Flash, DeepSeek-V3, DeepSeek-R1)
   if (openrouterKey) {
     try {
-      const preferredModel = process.env.AI_MODEL || 'deepseek/deepseek-chat';
-      const modelsToTry = [preferredModel, 'meta-llama/llama-3.3-70b-instruct:free', 'deepseek/deepseek-chat'];
+      const activeModel = requestedModel || process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+      const modelsToTry = [
+        activeModel,
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'google/gemini-2.0-flash-exp:free',
+        'deepseek/deepseek-chat'
+      ];
       
       for (const model of Array.from(new Set(modelsToTry))) {
         try {

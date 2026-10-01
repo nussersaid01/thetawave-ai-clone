@@ -59,6 +59,7 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
       : 'New Uploaded Note';
 
     try {
+      const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,6 +67,7 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           title: title,
           subject: 'Uploaded Source',
           language: outputLanguage,
+          model: selectedModel || undefined,
           sampleTranscript: `Extracted material from ${title}. Synthesized in ${outputLanguage}.`
         })
       });

@@ -90,6 +90,8 @@ export const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({
 
     // Call API or generate structured lecture package
     try {
+      const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
+      const selectedLang = typeof window !== 'undefined' ? localStorage.getItem('thetawave_language') : null;
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,6 +99,8 @@ export const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({
           title: lectureTitle,
           subject: subject,
           recordedSeconds: recordingTime,
+          model: selectedModel || undefined,
+          language: selectedLang || undefined,
           sampleTranscript: `Lecture on ${lectureTitle}. Key concepts discussed include core principles, mathematical formulation, practical derivations, and real-world system applications.`
         })
       });

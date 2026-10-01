@@ -48,6 +48,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     setIsTyping(true);
 
     try {
+      const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,7 +56,8 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           query: query,
           lectureTitle: lecture.title,
           lectureSummary: lecture.summary,
-          markdownNotes: lecture.markdownNotes
+          markdownNotes: lecture.markdownNotes,
+          model: selectedModel || undefined
         })
       });
 

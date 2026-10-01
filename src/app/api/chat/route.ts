@@ -3,7 +3,7 @@ import { callAICompletion } from '@/lib/aiProvider';
 
 export async function POST(req: NextRequest) {
   try {
-    const { query, lectureTitle, lectureSummary, markdownNotes } = await req.json();
+    const { query, lectureTitle, lectureSummary, markdownNotes, model } = await req.json();
 
     const prompt = `You are ThetaWave Study Buddy AI. You are helping a student understand their lecture notes.
 Lecture Title: ${lectureTitle}
@@ -15,10 +15,11 @@ User Question: ${query}
 
 Provide a concise, direct, and illuminating answer grounded in these lecture notes. Mention specific section references or citations if applicable. Format mathematics with LaTeX inline $...$ or display $$...$$ where appropriate.`;
 
-    const aiReply = await callAICompletion(prompt, false);
-    if (aiReply) {
+    const rawReply = await callAICompletion(prompt, false, model);
+    if (rawReply) {
+      const cleanedReply = rawReply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       return NextResponse.json({
-        reply: aiReply,
+        reply: cleanedReply,
         citations: [`${lectureTitle} Lecture Notes`]
       });
     }

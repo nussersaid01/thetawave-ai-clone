@@ -5,18 +5,20 @@ import { callAICompletion } from '@/lib/aiProvider';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, subject, sampleTranscript } = body;
+    const { title, subject, sampleTranscript, model, language } = body;
 
     const lectureTitle = title || 'Synthesized Lecture';
     const lectureSubject = subject || 'General Studies';
+    const outputLanguage = language || 'English (US)';
     const prompt = `You are an elite academic AI assistant. Analyze this lecture topic and materials:
 Title: ${lectureTitle}
 Subject: ${lectureSubject}
 Transcript / Notes: ${sampleTranscript || lectureTitle}
+Output Language Requirement: All notes, summaries, mindmap, flashcards, and quiz must be generated in ${outputLanguage}.
 
 Generate a comprehensive JSON object matching this schema:
 {
-  "summary": "2-3 sentence executive TL;DR",
+  "summary": "2-3 sentence executive TL;DR in ${outputLanguage}",
   "markdownNotes": "# Title\\n\\n## 1. Overview... (Use Markdown, tables, and LaTeX math $...$ and $$...$$ for any equations)",
   "mindmapMarkdown": "# Central Topic\\n## 1. Subtopic A\\n### Detail 1\\n## 2. Subtopic B",
   "flashcards": [
@@ -29,11 +31,17 @@ Generate a comprehensive JSON object matching this schema:
 
 Return ONLY raw valid JSON.`;
 
-    const aiOutput = await callAICompletion(prompt, true);
+    const aiOutput = await callAICompletion(prompt, true, model);
     if (aiOutput) {
       try {
-        const cleaned = aiOutput.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        const parsed = JSON.parse(cleaned);
+        const cleaned = aiOutput
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/^```json\s*/, '')
+          .replace(/\s*```$/, '')
+          .trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : cleaned;
+        const parsed = JSON.parse(jsonStr);
 
         const completeLecture: LectureData = {
           id: `lec-${Date.now()}`,

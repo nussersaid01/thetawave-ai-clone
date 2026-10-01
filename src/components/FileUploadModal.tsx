@@ -37,6 +37,8 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
     try {
       const title = lectureTitle || (selectedFile ? selectedFile.name : 'Uploaded Study Material');
+      const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
+      const selectedLang = typeof window !== 'undefined' ? localStorage.getItem('thetawave_language') : null;
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,7 +46,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
           title: title,
           subject: 'Uploaded Source',
           sourceType: selectedFile ? selectedFile.type : 'youtube',
-          youtubeUrl: youtubeUrl
+          youtubeUrl: youtubeUrl,
+          model: selectedModel || undefined,
+          language: selectedLang || undefined
         })
       });
 
