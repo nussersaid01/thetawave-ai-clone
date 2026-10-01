@@ -32,64 +32,139 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
   };
 
+  const [statusMessage, setStatusMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const handleUploadAndGenerate = async () => {
     setIsProcessing(true);
+    setErrorMessage(null);
+    setStatusMessage('Reading source content...');
+
+    let extractedText = '';
+    let determinedTitle = lectureTitle.trim();
+    let sourceType = 'Uploaded Source';
 
     try {
-      const title = lectureTitle || (selectedFile ? selectedFile.name : 'Uploaded Study Material');
+      if (selectedFile) {
+        const fileName = selectedFile.name;
+        if (!determinedTitle) {
+          determinedTitle = fileName.replace(/\.[^/.]+$/, '');
+        }
+        setStatusMessage(`Extracting text from ${fileName}...`);
+
+        const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+        if (['txt', 'md', 'markdown', 'csv', 'json'].includes(fileExt) || selectedFile.type.startsWith('text/')) {
+          extractedText = await selectedFile.text();
+        } else {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+
+          const extractRes = await fetch('/api/extract', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const extractData = await extractRes.json();
+          if (!extractRes.ok || !extractData.text) {
+            throw new Error(extractData.error || `Failed to extract readable text from ${fileName}`);
+          }
+          extractedText = extractData.text;
+          if (extractData.title && !lectureTitle.trim()) {
+            determinedTitle = extractData.title;
+          }
+          sourceType = `${extractData.type?.toUpperCase() || 'DOCUMENT'} File`;
+        }
+      } else if (youtubeUrl.trim()) {
+        setStatusMessage('Fetching YouTube transcript & captions...');
+        const extractRes = await fetch('/api/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: youtubeUrl.trim() })
+        });
+
+        const extractData = await extractRes.json();
+        if (!extractRes.ok || !extractData.text) {
+          throw new Error(extractData.error || 'Failed to extract captions from this YouTube URL');
+        }
+        extractedText = extractData.text;
+        if (extractData.title && !lectureTitle.trim()) {
+          determinedTitle = extractData.title;
+        }
+        sourceType = 'YouTube Lecture';
+      }
+
+      if (!extractedText || extractedText.trim().length < 15) {
+        throw new Error('No readable text content found in the provided source.');
+      }
+
+      setStatusMessage('Synthesizing AI study notes, mindmap, flashcards & quiz...');
+      const title = determinedTitle || 'Uploaded Study Material';
       const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
       const selectedLang = typeof window !== 'undefined' ? localStorage.getItem('thetawave_language') : null;
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title,
-          subject: 'Uploaded Source',
-          sourceType: selectedFile ? selectedFile.type : 'youtube',
-          youtubeUrl: youtubeUrl,
+          subject: sourceType,
           model: selectedModel || undefined,
-          language: selectedLang || undefined
+          language: selectedLang || undefined,
+          sampleTranscript: extractedText.slice(0, 30000)
         })
       });
 
-      if (!res.ok) throw new Error('Processing failed');
+      if (!res.ok) throw new Error('Generation failed');
       const data: LectureData = await res.json();
       onLectureCreated(data);
       onClose();
-    } catch (err) {
-      console.error('Upload processing error:', err);
-      // Fallback
-      const title = lectureTitle || 'Uploaded Study Material';
-      const fallback: LectureData = {
-        id: `upload-${Date.now()}`,
-        title: title,
-        subject: 'Uploaded Material',
-        date: new Date().toISOString().split('T')[0],
-        summary: `Structured lecture study package synthesized from ${selectedFile ? selectedFile.name : 'YouTube/URL source'}.`,
-        markdownNotes: `# ${title}\n\n## 1. Overview\nDocument content analyzed and structured into comprehensive study notes.\n\n## 2. Key Formulations & Definitions\n* Core concepts extracted from uploaded pages.\n* Examination-relevant summaries.\n`,
-        mindmapMarkdown: `# ${title}\n## 1. Chapter Summary\n### Core Points\n## 2. Detailed Breakdown\n### Subsection A\n### Subsection B\n`,
-        flashcards: [
-          {
-            id: `fc-up-1`,
-            front: `What is the central focus of ${title}?`,
-            back: 'Core thematic analysis extracted directly from the uploaded reference file.',
-            tag: 'Uploaded'
-          }
-        ],
-        quiz: [
-          {
-            id: `qz-up-1`,
-            question: `What was the primary conclusion reached in ${title}?`,
-            options: ['Systemic integration', 'Theoretical contradiction', 'Empirical validation', 'Preliminary survey'],
-            correctIndex: 0,
-            explanation: 'The uploaded material concludes with comprehensive systemic integration.'
-          }
-        ]
-      };
-      onLectureCreated(fallback);
-      onClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Upload processing error:', msg);
+
+      if (extractedText && extractedText.trim().length >= 20) {
+        const title = determinedTitle || 'Uploaded Study Material';
+        const cleanParas = extractedText.split(/\n\s*\n/).filter(p => p.length > 25);
+        const p1 = cleanParas[0] || extractedText.slice(0, 350);
+        const p2 = cleanParas[1] || extractedText.slice(350, 700);
+        const sentences = extractedText.split(/(?<=[.?!])\s+/).filter(s => s.length > 20);
+        const point1 = sentences[0] || `Key concepts extracted from ${title}.`;
+        const point2 = sentences[1] || `Analytical framework and detailed study findings.`;
+
+        const fallback: LectureData = {
+          id: `upload-${Date.now()}`,
+          title: title,
+          subject: sourceType,
+          date: new Date().toISOString().split('T')[0],
+          summary: `Summary extracted directly from ${title}: ${point1}`,
+          markdownNotes: `# ${title}\n\n## 1. Overview\n${p1}\n\n## 2. Key Insights\n* ${point1}\n* ${point2}\n\n## 3. Detailed Content\n${p2}\n`,
+          mindmapMarkdown: `# ${title}\n## 1. Chapter Summary\n### ${point1.slice(0, 40)}\n## 2. Detailed Breakdown\n### ${point2.slice(0, 40)}\n`,
+          flashcards: [
+            {
+              id: `fc-up-${Date.now()}`,
+              front: `What is the core focus of ${title}?`,
+              back: point1,
+              tag: 'Core Concept'
+            }
+          ],
+          quiz: [
+            {
+              id: `qz-up-${Date.now()}`,
+              question: `Which fundamental point is established in ${title}?`,
+              options: [point1.slice(0, 50), 'Unrelated topic', 'Unverified hypothesis', 'Preliminary survey only'],
+              correctIndex: 0,
+              explanation: `Directly stated in the uploaded content: ${point1.slice(0, 100)}`
+            }
+          ]
+        };
+        onLectureCreated(fallback);
+        onClose();
+      } else {
+        setErrorMessage(msg);
+      }
     } finally {
       setIsProcessing(false);
+      setStatusMessage('');
       setSelectedFile(null);
       setYoutubeUrl('');
     }
@@ -161,6 +236,22 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </div>
+
+        {/* Error Notification Banner */}
+        {errorMessage && (
+          <div className="mt-4 rounded-xl bg-rose-500/10 border border-rose-500/30 p-2.5 text-xs text-rose-800 dark:text-rose-200">
+            <p className="font-bold">Extraction Error:</p>
+            <p className="mt-0.5">{errorMessage}</p>
+          </div>
+        )}
+
+        {/* Progress Notification Banner during processing */}
+        {isProcessing && (
+          <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 p-3 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:border-indigo-800/80 dark:text-indigo-200 animate-pulse">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <span className="font-semibold">{statusMessage}</span>
+          </div>
+        )}
 
         {/* Submit */}
         <div className="mt-6 flex items-center justify-end gap-3">

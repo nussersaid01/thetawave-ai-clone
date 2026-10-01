@@ -32,18 +32,21 @@ export async function callAICompletion(prompt: string, jsonMode = false, request
   // 1. OpenRouter (Supports Free LLaMA 3.3 70B, Gemini 2.0 Flash, DeepSeek-V3, DeepSeek-R1)
   if (openrouterKey) {
     try {
-      const activeModel = requestedModel || process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+      const rawRequested = requestedModel || process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct';
       const modelsToTry = [
-        activeModel,
-        'meta-llama/llama-3.3-70b-instruct:free',
-        'google/gemini-2.0-flash-exp:free',
-        'deepseek/deepseek-chat'
+        rawRequested,
+        rawRequested.replace(/:free$/, ''),
+        'meta-llama/llama-3.3-70b-instruct',
+        'deepseek/deepseek-chat',
+        'google/gemini-2.0-flash-001',
+        'qwen/qwen3.8-27b:free'
       ];
       
       for (const model of Array.from(new Set(modelsToTry))) {
         try {
           const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
+            signal: AbortSignal.timeout(20000),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${openrouterKey}`,
@@ -80,6 +83,7 @@ export async function callAICompletion(prompt: string, jsonMode = false, request
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
         {
           method: 'POST',
+          signal: AbortSignal.timeout(20000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
@@ -102,6 +106,7 @@ export async function callAICompletion(prompt: string, jsonMode = false, request
       const model = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
+        signal: AbortSignal.timeout(20000),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${groqKey}`
@@ -128,6 +133,7 @@ export async function callAICompletion(prompt: string, jsonMode = false, request
       const model = process.env.AI_MODEL || 'deepseek-chat';
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
+        signal: AbortSignal.timeout(20000),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${deepseekKey}`
