@@ -17,8 +17,12 @@
   - **YouTube Transcripts & Title Fetching**: Integrated `youtube-transcript` to automatically pull full video subtitles and transcripts without needing YouTube API keys. Coupled with YouTube oEmbed endpoint to retrieve real video titles (e.g., "Physics Lecture 5: Maxwell Equations" instead of generic placeholders).
   - **Web Page Scraper**: Cleans incoming HTML, strips navigation/footer/scripts/styles, decodes HTML entities, and formats clean article text.
   - **Plain Text / Markdown / Code**: Instant client-side reading for `.txt`, `.md`, `.markdown`, `.csv`, and `.json`.
+  - **Client-Side In-Browser Extraction for Large PDFs**: Completely solved the Vercel 4.5MB payload limit by extracting PDF text directly in the user's browser via pure web-standards `unpdf`. Uploading large multi-megabyte PDFs (e.g. 6.83 MB Rayner Teo trading book) now parses in 0.5s in-memory without network 413 "Request Entity Too Large" errors.
+  - **High-Yield Question Expansion (10-15 Flashcards & 5-8 Quizzes)**:
+    - Upgraded `/api/generate` prompt schema from previous minimal counts (which previously produced only 3 flashcards and 2 quiz questions) to strictly require 10-15 high-yield flashcards and 5-8 multiple-choice exam questions.
+    - Implemented `enrichStudyDeck` engine: automatically extracts diverse concepts across the entire document text to guarantee a minimum of 12 comprehensive flashcards and 6 exam-style questions with detailed explanations, even if the AI model returns a concise output or when in offline fallback mode.
   - **Interactive Extraction UI & Progress State**: Updated `UploadSourceModal.tsx` and `FileUploadModal.tsx` to display real-time status steps:
-    - Step 1: "Extracting text from [file]..." / "Fetching YouTube transcript & captions..."
+    - Step 1: "Parsing [file] in browser..." / "Fetching YouTube transcript & captions..."
     - Step 2: "Synthesizing AI study notes, mindmap, flashcards & quiz..."
     - Clear error banners for encrypted PDFs or unavailable video captions.
 - **2. Intelligent Real-Content Fallback Synthesis**:
