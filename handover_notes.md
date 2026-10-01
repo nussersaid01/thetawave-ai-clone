@@ -1,5 +1,5 @@
 # 🔄 Persistent Handover State: ThetaWave AI Clone
-`[Generated: 2026-10-02 01:12]`
+`[Generated: 2026-10-02 01:47]`
 
 ## 1. System Status & Architecture
 - **Workspace Architecture**: Hybrid Model (Local SSD working directory + Clean Google Drive cloud mirror).
@@ -29,13 +29,18 @@
     - Sidebar folders dropdown dynamically computes real-time note counts per folder and routes directly into the folder.
     - `AllNotesView.tsx` updated with folder badges and multi-category filtering.
 
-## 3. Universal AI Provider & OpenRouter Integration
-- **Key Auto-Detection**:
-  - Configured `src/lib/aiProvider.ts` to intelligently auto-detect key patterns.
-  - Detects `sk-or-v1-` prefixes (OpenRouter) even if passed under `GEMINI_API_KEY`, avoiding provider mismatch crashes.
-  - Included mandatory OpenRouter headers (`HTTP-Referer: https://thetawave.ai`, `X-Title: ThetaWave AI`).
-  - Default Model: `deepseek/deepseek-chat` (DeepSeek-V3, blazing fast, smart, ~$0.00014/1k tokens).
-  - Multi-tier model fallback: `deepseek/deepseek-chat` -> `meta-llama/llama-3.3-70b-instruct:free` -> local high-fidelity synthesis.
+## 3. Dynamic 4-Tier AI Engine & Workspace Model Selection
+- **Tier Architecture (Ordered by Capability - 2 Free on Top, 2 Paid on Bottom)**:
+  1. `google/gemini-2.0-flash-exp:free`: 🟢 Free Tier • Ultra Fast & Agile.
+  2. `meta-llama/llama-3.3-70b-instruct:free`: 🟢 Free Tier • Smart Academic Core (**System Default**).
+  3. `deepseek/deepseek-chat`: ⚡ Paid Tier (~RM0.001) • DeepSeek-V3 Flagship Core.
+  4. `deepseek/deepseek-r1`: 🔬 Paid Tier (~RM0.003) • PhD Deep Reasoning & Complex Math.
+- **Live User Preference Persistence**:
+  - Saved in browser `localStorage.getItem('thetawave_ai_model')` via `SettingsModal.tsx`.
+  - Seamless pass-through in all client callers (`UploadSourceModal`, `FileUploadModal`, `AudioRecorderModal`, `ChatDrawer`).
+  - `/api/generate` and `/api/chat` sanitized against `<think>...</think>` tags for DeepSeek-R1 compatibility.
+- **Fail-Safe Fallback Routing**:
+  - Automatically cascades: `Selected Model` -> `LLaMA 3.3 70B:free` -> `Gemini 2.0 Flash:free` -> `DeepSeek-V3` -> `Local High-Fidelity Synthesis`.
 - **Local Credentials File**:
   - `.env.local` initialized with user's verified OpenRouter key and model configuration.
   - Repository template `.env.example` committed and tracked cleanly without leaking secrets.
