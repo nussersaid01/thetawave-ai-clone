@@ -1,5 +1,5 @@
 # 🔄 Persistent Handover State: ThetaWave AI Clone
-`[Generated: 2026-10-02 01:59]`
+`[Generated: 2026-10-02 02:20]`
 
 ## 1. System Status & Architecture
 - **Workspace Architecture**: Hybrid Model (Local SSD working directory + Clean Google Drive cloud mirror).
@@ -28,6 +28,12 @@
     - Folder detail view with breadcrumbs (`Folders > Semester 1 Core`), note list, note deletion, and `+ Add Note Here`.
     - Sidebar folders dropdown dynamically computes real-time note counts per folder and routes directly into the folder.
     - `AllNotesView.tsx` updated with folder badges and multi-category filtering.
+- **4. Arabic & Tulisan Jawi Synthesis with Dynamic Model Recommendation Hint**:
+  - Expanded note output languages to include **English (US)**, **Bahasa Melayu**, **العربية (Arabic)**, and **Tulisan Jawi (جاوي)**.
+  - Implemented dynamic amber recommendation banner in `SettingsModal.tsx` and `UploadSourceModal.tsx` whenever Arabic or Jawi is selected, urging users to choose at least **Meta LLaMA 3.3 70B (Free)** or **DeepSeek-V3 / R1 (Paid)** for optimal Nahu/grammar, morphology, and Jawi script ligatures.
+  - Enhanced `/api/generate` with strict Arabic & Jawi prompt directives, markdown structure, LaTeX preservation, Arabic/Jawi mindmap, flashcards, and quizzes.
+  - Built comprehensive high-fidelity synthetic fallbacks in Arabic and Jawi for zero-downtime offline stability.
+  - Enhanced `/api/chat` with Arabic and Jawi response handling, citations, and grounded fallbacks.
 
 ## 3. Dynamic 4-Tier AI Engine & Workspace Model Selection
 - **Tier Architecture (Ordered by Capability - 2 Free on Top, 2 Paid on Bottom)**:
