@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LectureData } from '@/types';
+import { callAICompletion } from '@/lib/aiProvider';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,22 +9,7 @@ export async function POST(req: NextRequest) {
 
     const lectureTitle = title || 'Synthesized Lecture';
     const lectureSubject = subject || 'General Studies';
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-
-    if (apiKey) {
-      // Call Google Gemini API
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `You are an elite academic AI assistant. Analyze this lecture topic and materials:
+    const prompt = `You are an elite academic AI assistant. Analyze this lecture topic and materials:
 Title: ${lectureTitle}
 Subject: ${lectureSubject}
 Transcript / Notes: ${sampleTranscript || lectureTitle}
@@ -41,43 +27,30 @@ Generate a comprehensive JSON object matching this schema:
   ]
 }
 
-Return ONLY raw valid JSON.`
-                    }
-                  ]
-                }
-              ],
-              generationConfig: {
-                responseMimeType: "application/json"
-              }
-            })
-          }
-        );
+Return ONLY raw valid JSON.`;
 
-        if (geminiRes.ok) {
-          const raw = await geminiRes.json();
-          const candidateText = raw.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText) {
-            const cleaned = candidateText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-            const parsed = JSON.parse(cleaned);
+    const aiOutput = await callAICompletion(prompt, true);
+    if (aiOutput) {
+      try {
+        const cleaned = aiOutput.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+        const parsed = JSON.parse(cleaned);
 
-            const completeLecture: LectureData = {
-              id: `lec-${Date.now()}`,
-              title: lectureTitle,
-              subject: lectureSubject,
-              duration: '45 mins',
-              date: new Date().toISOString().split('T')[0],
-              summary: parsed.summary,
-              markdownNotes: parsed.markdownNotes,
-              mindmapMarkdown: parsed.mindmapMarkdown,
-              flashcards: parsed.flashcards,
-              quiz: parsed.quiz
-            };
+        const completeLecture: LectureData = {
+          id: `lec-${Date.now()}`,
+          title: lectureTitle,
+          subject: lectureSubject,
+          duration: '45 mins',
+          date: new Date().toISOString().split('T')[0],
+          summary: parsed.summary,
+          markdownNotes: parsed.markdownNotes,
+          mindmapMarkdown: parsed.mindmapMarkdown,
+          flashcards: parsed.flashcards,
+          quiz: parsed.quiz
+        };
 
-            return NextResponse.json(completeLecture);
-          }
-        }
-      } catch (geminiErr) {
-        console.warn('Gemini API call failed, falling back to synthesis template:', geminiErr);
+        return NextResponse.json(completeLecture);
+      } catch (parseErr) {
+        console.warn('AI JSON parsing failed, using high-fidelity fallback synthesis:', parseErr);
       }
     }
 

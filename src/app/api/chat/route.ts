@@ -1,55 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { callAICompletion } from '@/lib/aiProvider';
 
 export async function POST(req: NextRequest) {
   try {
     const { query, lectureTitle, lectureSummary, markdownNotes } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-    if (apiKey) {
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `You are ThetaWave Study Buddy AI. You are helping a student understand their lecture notes.
+    const prompt = `You are ThetaWave Study Buddy AI. You are helping a student understand their lecture notes.
 Lecture Title: ${lectureTitle}
-Lecture Summary: ${lectureSummary}
+Lecture Summary: ${lectureSummary || 'Academic lecture'}
 Lecture Notes:
-${markdownNotes}
+${markdownNotes || 'No notes provided'}
 
 User Question: ${query}
 
-Provide a concise, direct, and illuminating answer grounded in these lecture notes. Mention specific section references or citations if applicable.`
-                    }
-                  ]
-                }
-              ]
-            })
-          }
-        );
+Provide a concise, direct, and illuminating answer grounded in these lecture notes. Mention specific section references or citations if applicable. Format mathematics with LaTeX inline $...$ or display $$...$$ where appropriate.`;
 
-        if (geminiRes.ok) {
-          const raw = await geminiRes.json();
-          const replyText = raw.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (replyText) {
-            return NextResponse.json({
-              reply: replyText,
-              citations: [`${lectureTitle} Lecture Notes`]
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('Gemini chat failed, fallback to grounded logic', err);
-      }
+    const aiReply = await callAICompletion(prompt, false);
+    if (aiReply) {
+      return NextResponse.json({
+        reply: aiReply,
+        citations: [`${lectureTitle} Lecture Notes`]
+      });
     }
 
-    // Grounded fallback response
+    // Grounded fallback response if no AI key configured or network down
     let reply = `Based on your lecture "${lectureTitle}": `;
     const qLower = (query || '').toLowerCase();
 
@@ -58,17 +32,21 @@ Provide a concise, direct, and illuminating answer grounded in these lecture not
     } else if (qLower.includes('formula') || qLower.includes('equation') || qLower.includes('math')) {
       reply += `The central governing equation is detailed in Section 2. It models system response by mapping linear transformations through non-linear operator bounds.`;
     } else if (qLower.includes('analogy') || qLower.includes('simple') || qLower.includes('explain')) {
-      reply += `Think of it like an orchestra: each component contributes an individual frequency mode, and the composite output is the harmonious sum of all damped oscillations working under physical constraints.`;
+      reply += `Think of this mechanism like a multi-stage water filtration plant: each layer captures finer impurities (features) until the purest output is delivered.`;
     } else {
-      reply += `This topic establishes that understanding boundary constraints and parameter definitions directly unlocks the solution to complex midterm problems. Refer to your notes Section 2 for the full breakdown.`;
+      reply += `The primary concept centers around understanding foundational definitions, systematic derivation steps, and validating assumptions against empirical criteria.`;
     }
 
     return NextResponse.json({
-      reply: reply,
-      citations: [`Lecture Notes Section 2`, `Key Takeaways`]
+      reply,
+      citations: [`${lectureTitle} Notes`]
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+
+  } catch (error) {
+    console.error('Chat error:', error);
+    return NextResponse.json(
+      { error: 'Failed to process chat message' },
+      { status: 500 }
+    );
   }
 }
