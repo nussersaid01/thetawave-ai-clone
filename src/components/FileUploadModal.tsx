@@ -55,6 +55,55 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
         if (['txt', 'md', 'markdown', 'csv', 'json'].includes(fileExt) || selectedFile.type.startsWith('text/')) {
           extractedText = await selectedFile.text();
+        } else if (fileExt === 'pdf') {
+          // Client-side PDF extraction (handles > 4.5 MB without Vercel limit)
+          setStatusMessage(`Parsing ${fileName} in browser...`);
+          try {
+            const { extractText } = await import('unpdf');
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true });
+            const parsedText = (typeof text === 'string' ? text : Array.isArray(text) ? (text as string[]).join('\n\n') : '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (parsedText && parsedText.length > 20) {
+              extractedText = parsedText;
+              sourceType = 'PDF Document';
+            }
+          } catch (clientErr) {
+            console.warn('Client-side PDF extraction fallback to server:', clientErr);
+          }
+
+          if (!extractedText) {
+            setStatusMessage(`Extracting ${fileName} on server...`);
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            const extractRes = await fetch('/api/extract', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!extractRes.ok) {
+              let errText = '';
+              try {
+                const errJson = await extractRes.json();
+                errText = errJson.error;
+              } catch {
+                errText = await extractRes.text().catch(() => '');
+              }
+              if (extractRes.status === 413 || errText.includes('Entity Too Large')) {
+                throw new Error(`File is too large for server processing (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB exceeds 4.5 MB).`);
+              }
+              throw new Error(errText || `Server extraction failed with HTTP ${extractRes.status}`);
+            }
+
+            const extractData = await extractRes.json();
+            extractedText = extractData.text;
+            if (extractData.title && !lectureTitle.trim()) {
+              determinedTitle = extractData.title;
+            }
+            sourceType = `${extractData.type?.toUpperCase() || 'DOCUMENT'} File`;
+          }
         } else {
           const formData = new FormData();
           formData.append('file', selectedFile);
@@ -64,8 +113,22 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             body: formData,
           });
 
+          if (!extractRes.ok) {
+            let errText = '';
+            try {
+              const errJson = await extractRes.json();
+              errText = errJson.error;
+            } catch {
+              errText = await extractRes.text().catch(() => '');
+            }
+            if (extractRes.status === 413 || errText.includes('Entity Too Large')) {
+              throw new Error(`File is too large (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB exceeds 4.5 MB).`);
+            }
+            throw new Error(errText || `Server extraction failed with HTTP ${extractRes.status}`);
+          }
+
           const extractData = await extractRes.json();
-          if (!extractRes.ok || !extractData.text) {
+          if (!extractData.text) {
             throw new Error(extractData.error || `Failed to extract readable text from ${fileName}`);
           }
           extractedText = extractData.text;

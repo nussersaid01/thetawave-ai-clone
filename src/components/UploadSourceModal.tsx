@@ -246,8 +246,56 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
         // If plain text file, read directly in browser
         if (['txt', 'md', 'markdown', 'csv', 'json'].includes(fileExt) || selectedFile.type.startsWith('text/')) {
           extractedText = await selectedFile.text();
+        } else if (fileExt === 'pdf') {
+          // 1. Try client-side extraction first (supports large PDFs > 4.5 MB without Vercel payload limits)
+          setProcessingStatus(`Parsing ${fileName} in browser...`);
+          try {
+            const { extractText } = await import('unpdf');
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true });
+            const parsedText = (typeof text === 'string' ? text : Array.isArray(text) ? (text as string[]).join('\n\n') : '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (parsedText && parsedText.length > 20) {
+              extractedText = parsedText;
+              determinedSubject = 'PDF Lecture';
+            }
+          } catch (clientErr) {
+            console.warn('Client-side PDF extraction skipped, falling back to server extraction:', clientErr);
+          }
+
+          // 2. If client extraction didn't yield text, fallback to /api/extract
+          if (!extractedText) {
+            setProcessingStatus(`Extracting ${fileName} on server...`);
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            const extractRes = await fetch('/api/extract', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!extractRes.ok) {
+              let errText = '';
+              try {
+                const errJson = await extractRes.json();
+                errText = errJson.error;
+              } catch {
+                errText = await extractRes.text().catch(() => '');
+              }
+              if (extractRes.status === 413 || errText.includes('Entity Too Large')) {
+                throw new Error(`File is too large for server processing (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB exceeds the 4.5 MB limit). Please use a smaller PDF.`);
+              }
+              throw new Error(errText || `Server extraction failed with HTTP ${extractRes.status}`);
+            }
+
+            const extractData = await extractRes.json();
+            extractedText = extractData.text;
+            if (extractData.title) determinedTitle = extractData.title;
+            determinedSubject = `${extractData.type?.toUpperCase() || 'DOCUMENT'} Lecture`;
+          }
         } else {
-          // Send PDF, DOCX, etc. to /api/extract
+          // Send DOCX, etc. to /api/extract
           const formData = new FormData();
           formData.append('file', selectedFile);
 
@@ -256,8 +304,22 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             body: formData,
           });
 
+          if (!extractRes.ok) {
+            let errText = '';
+            try {
+              const errJson = await extractRes.json();
+              errText = errJson.error;
+            } catch {
+              errText = await extractRes.text().catch(() => '');
+            }
+            if (extractRes.status === 413 || errText.includes('Entity Too Large')) {
+              throw new Error(`File is too large (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB exceeds 4.5 MB).`);
+            }
+            throw new Error(errText || `Extraction failed with HTTP ${extractRes.status}`);
+          }
+
           const extractData = await extractRes.json();
-          if (!extractRes.ok || !extractData.text) {
+          if (!extractData.text) {
             throw new Error(extractData.error || `Could not extract readable text from ${fileName}`);
           }
 
@@ -279,8 +341,19 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             body: JSON.stringify({ url: trimmed })
           });
 
+          if (!extractRes.ok) {
+            let errText = '';
+            try {
+              const errJson = await extractRes.json();
+              errText = errJson.error;
+            } catch {
+              errText = await extractRes.text().catch(() => '');
+            }
+            throw new Error(errText || 'Failed to extract content from the provided URL');
+          }
+
           const extractData = await extractRes.json();
-          if (!extractRes.ok || !extractData.text) {
+          if (!extractData.text) {
             throw new Error(extractData.error || 'Failed to extract content from the provided URL');
           }
 
