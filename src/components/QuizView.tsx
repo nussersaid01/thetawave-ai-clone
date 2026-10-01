@@ -1,19 +1,109 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QuizQuestion } from '@/types';
-import { CheckCircle2, XCircle, Trophy, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle2, XCircle, Trophy, RefreshCw, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface QuizViewProps {
   questions: QuizQuestion[];
   lectureTitle: string;
+  notesText?: string;
+  onAddQuestions?: (newQuestions: QuizQuestion[]) => void;
 }
 
-export const QuizView: React.FC<QuizViewProps> = ({ questions, lectureTitle }) => {
+function extractAdditionalQuiz(
+  notesText: string,
+  existingQuiz: QuizQuestion[],
+  lectureTitle: string = 'Study Lecture',
+  count: number = 4
+): QuizQuestion[] {
+  const existingQuestions = new Set(existingQuiz.map(q => q.question.toLowerCase()));
+  const cleanSentences = (notesText || '')
+    .replace(/[#*`_]/g, ' ')
+    .split(/(?<=[.?!])\s+/)
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(s => s.length > 25 && !s.startsWith('http') && !s.includes('data:image'));
+
+  const newQuiz: QuizQuestion[] = [];
+
+  for (let i = 0; i < cleanSentences.length; i++) {
+    if (newQuiz.length >= count) break;
+    const s = cleanSentences[i];
+    const qText = `According to the lecture on "${lectureTitle}", which statement accurately describes: "${s.slice(0, 50)}..."?`;
+    if (existingQuestions.has(qText.toLowerCase())) continue;
+
+    const cleanAnswer = s.length > 85 ? s.slice(0, 85) + '...' : s;
+    newQuiz.push({
+      id: `qz-gen-${Date.now()}-${newQuiz.length + 1}`,
+      question: qText,
+      options: [
+        cleanAnswer,
+        'This statement is fundamentally contradictory to the primary thesis.',
+        'This condition is merely theoretical without empirical application.',
+        'This rule has been deprecated and should not be relied upon.'
+      ],
+      correctIndex: 0,
+      explanation: `Directly supported by the study text: "${s}"`
+    });
+  }
+
+  while (newQuiz.length < count) {
+    const idx = newQuiz.length + 1;
+    newQuiz.push({
+      id: `qz-gen-${Date.now()}-${idx}`,
+      question: `What is a primary exam takeaway from "${lectureTitle}" (Section ${idx})?`,
+      options: [
+        `Systematic conceptual understanding and practical verification of ${lectureTitle}.`,
+        'Ignoring market or theoretical structures during execution.',
+        'Relying solely on intuition without objective criteria.',
+        'Discarding all foundational frameworks.'
+      ],
+      correctIndex: 0,
+      explanation: `Systematic mastery and objective criteria are paramount in ${lectureTitle}.`
+    });
+  }
+
+  return newQuiz;
+}
+
+export const QuizView: React.FC<QuizViewProps> = ({ 
+  questions: initialQuestions, 
+  lectureTitle,
+  notesText,
+  onAddQuestions 
+}) => {
+  const [questions, setQuestions] = useState<QuizQuestion[]>(initialQuestions);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [showSummary, setShowSummary] = useState(false);
+  const [isGeneratingMore, setIsGeneratingMore] = useState(false);
+
+  useEffect(() => {
+    setQuestions(initialQuestions);
+    setCurrentIndex(0);
+    setSelectedAnswers({});
+    setShowSummary(false);
+  }, [initialQuestions]);
+
+  const handleGenerateMoreQuestions = () => {
+    setIsGeneratingMore(true);
+    setTimeout(() => {
+      const generated = extractAdditionalQuiz(
+        notesText || '',
+        questions,
+        lectureTitle || 'Lecture',
+        4
+      );
+      const updated = [...questions, ...generated];
+      setQuestions(updated);
+      onAddQuestions?.(generated);
+      setIsGeneratingMore(false);
+      setSelectedAnswers({});
+      setCurrentIndex(0);
+      setShowSummary(false);
+    }, 500);
+  };
 
   const currentQ = questions[currentIndex];
   const hasAnsweredCurrent = selectedAnswers[currentIndex] !== undefined;
@@ -112,13 +202,28 @@ export const QuizView: React.FC<QuizViewProps> = ({ questions, lectureTitle }) =
           </div>
         </div>
 
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700"
-        >
-          <RefreshCw className="h-4 w-4" />
-          <span>Retake Quiz</span>
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>Retake Quiz</span>
+          </button>
+
+          <button
+            onClick={handleGenerateMoreQuestions}
+            disabled={isGeneratingMore}
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 cursor-pointer disabled:opacity-50"
+          >
+            {isGeneratingMore ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            <span>{isGeneratingMore ? 'Generating...' : '+ Generate 4 More Questions'}</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -131,9 +236,20 @@ export const QuizView: React.FC<QuizViewProps> = ({ questions, lectureTitle }) =
         <span className="font-semibold text-zinc-900 dark:text-zinc-100">
           Question {currentIndex + 1} of {questions.length}
         </span>
-        <span>
-          Score: {Object.entries(selectedAnswers).filter(([idx, ans]) => questions[Number(idx)].correctIndex === ans).length} / {Object.keys(selectedAnswers).length}
-        </span>
+        <div className="flex items-center gap-3">
+          <span>
+            Score: {Object.entries(selectedAnswers).filter(([idx, ans]) => questions[Number(idx)]?.correctIndex === ans).length} / {Object.keys(selectedAnswers).length}
+          </span>
+          <button
+            onClick={handleGenerateMoreQuestions}
+            disabled={isGeneratingMore}
+            title="Add 4 more practice questions from lecture"
+            className="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50/70 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300 cursor-pointer disabled:opacity-50"
+          >
+            {isGeneratingMore ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            <span>+ 4 Qs</span>
+          </button>
+        </div>
       </div>
 
       {/* Progress Line */}

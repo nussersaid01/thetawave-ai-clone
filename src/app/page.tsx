@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { sampleLectures, sampleLecturesMalay, defaultFolders } from '@/lib/sampleData';
-import { LectureData, StudyFolder } from '@/types';
+import { LectureData, StudyFolder, Flashcard, QuizQuestion } from '@/types';
 import { Sidebar, ViewMode } from '@/components/Sidebar';
 import { HomeDashboard } from '@/components/HomeDashboard';
 import { Navbar } from '@/components/Navbar';
@@ -124,6 +124,26 @@ export default function Home() {
     setCurrentLectureIndex(0);
     setCurrentView('workspace');
     setActiveTab('notes');
+  };
+
+  const handleAddCardsToLecture = (lectureId: string, newCards: Flashcard[]) => {
+    setLectures((prev) =>
+      prev.map((l) =>
+        l.id === lectureId
+          ? { ...l, flashcards: [...l.flashcards, ...newCards] }
+          : l
+      )
+    );
+  };
+
+  const handleAddQuestionsToLecture = (lectureId: string, newQuestions: QuizQuestion[]) => {
+    setLectures((prev) =>
+      prev.map((l) =>
+        l.id === lectureId
+          ? { ...l, quiz: [...l.quiz, ...newQuestions] }
+          : l
+      )
+    );
   };
 
   const handleDeleteNote = (id: string) => {
@@ -317,13 +337,20 @@ export default function Home() {
               )}
 
               {activeTab === 'flashcards' && (
-                <FlashcardsView cards={currentLecture.flashcards} />
+                <FlashcardsView 
+                  cards={currentLecture.flashcards} 
+                  lectureTitle={currentLecture.title}
+                  notesText={currentLecture.markdownNotes}
+                  onAddCards={(newCards) => handleAddCardsToLecture(currentLecture.id, newCards)}
+                />
               )}
 
               {activeTab === 'quiz' && (
                 <QuizView 
                   questions={currentLecture.quiz} 
                   lectureTitle={currentLecture.title} 
+                  notesText={currentLecture.markdownNotes}
+                  onAddQuestions={(newQuestions) => handleAddQuestionsToLecture(currentLecture.id, newQuestions)}
                 />
               )}
 

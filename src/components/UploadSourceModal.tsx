@@ -23,7 +23,8 @@ function buildIntelligentFallback(
   title: string,
   extractedText: string,
   language: string,
-  sourceType: string
+  sourceType: string,
+  deckDepth: 'standard' | 'intensive' = 'standard'
 ): LectureData {
   const isArabic = language.includes('Arabic') || language.includes('العربية');
   const isJawi = language.includes('Jawi') || language.includes('جاوي');
@@ -52,9 +53,9 @@ function buildIntelligentFallback(
     ? ['كونسيڤ اساس', 'ڤراتورن اوتام', 'اڤليكاسي ڤريكتيکل', 'اناليسيس داتا', 'روموسن ڤڤريقساءن', 'ستراتيݢي', 'ميكانيزم', 'ديفينيسي اوتام', 'اوجين كفهمن', 'فوكوس', 'ڤتوا', 'اولسن اخير']
     : ['Core Concept', 'Fundamental Rule', 'Practical Application', 'Data Analysis', 'Exam Takeaway', 'Execution Strategy', 'Mechanism', 'Key Definition', 'Self-Check', 'High-Yield Review', 'Pro Tip', 'Final Review'];
 
-  // Build 12 diverse flashcards
+  // Build flashcards according to deckDepth
   const flashcards = [];
-  const targetCards = 12;
+  const targetCards = deckDepth === 'intensive' ? 24 : 12;
   const cardStep = Math.max(1, Math.floor(sentences.length / targetCards));
 
   for (let i = 0; i < targetCards; i++) {
@@ -93,9 +94,9 @@ function buildIntelligentFallback(
     }
   }
 
-  // Build 6 exam-style quiz questions
+  // Build exam-style quiz questions according to deckDepth
   const quiz = [];
-  const targetQuiz = 6;
+  const targetQuiz = deckDepth === 'intensive' ? 12 : 6;
   const qStep = Math.max(1, Math.floor(sentences.length / targetQuiz));
 
   for (let j = 0; j < targetQuiz; j++) {
@@ -233,6 +234,7 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deckDepth, setDeckDepth] = useState<'standard' | 'intensive'>('standard');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -422,6 +424,7 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           subject: determinedSubject,
           language: outputLanguage,
           model: selectedModel || undefined,
+          deckDepth,
           sampleTranscript: extractedText.slice(0, 30000)
         })
       });
@@ -440,7 +443,8 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           determinedTitle || 'Uploaded Study Material',
           extractedText,
           outputLanguage,
-          determinedSubject
+          determinedSubject,
+          deckDepth
         );
         onLectureCreated(fallbackNote);
         onClose();
@@ -554,6 +558,42 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Study Depth & Deck Preset Selector */}
+        <div className="mt-4 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              Study Depth & Deck Preset:
+            </span>
+            <span className="text-[11px] text-zinc-500 font-medium">
+              {deckDepth === 'standard' ? '12 Cards • 6 Quiz' : '24 Cards • 12 Quiz'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDeckDepth('standard')}
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs transition cursor-pointer ${
+                deckDepth === 'standard'
+                  ? 'border border-indigo-500 bg-white shadow-sm text-indigo-700 dark:bg-zinc-900 dark:text-indigo-300 font-bold'
+                  : 'border border-zinc-200/60 bg-white/50 text-zinc-500 hover:text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:text-zinc-200'
+              }`}
+            >
+              <span>⚡ Standard (12 Cards)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeckDepth('intensive')}
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs transition cursor-pointer ${
+                deckDepth === 'intensive'
+                  ? 'border border-indigo-500 bg-white shadow-sm text-indigo-700 dark:bg-zinc-900 dark:text-indigo-300 font-bold'
+                  : 'border border-zinc-200/60 bg-white/50 text-zinc-500 hover:text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:text-zinc-200'
+              }`}
+            >
+              <span>🎓 Intensive Exam (24 Cards)</span>
+            </button>
+          </div>
+        </div>
 
         {/* 3. Footer Options: Output Language & Create Note */}
         <div className="mt-5 flex items-center justify-between pt-2">

@@ -7,7 +7,9 @@ function enrichStudyDeck(
   rawContent: string,
   language: string,
   initialCards: Flashcard[] = [],
-  initialQuiz: QuizQuestion[] = []
+  initialQuiz: QuizQuestion[] = [],
+  targetCards: number = 12,
+  targetQuiz: number = 6
 ): { flashcards: Flashcard[]; quiz: QuizQuestion[] } {
   const isMalay = language.toLowerCase().includes('melayu') || language.toLowerCase().includes('malay');
   const isArabic = language.toLowerCase().includes('arabic') || language.includes('العربية');
@@ -31,9 +33,9 @@ function enrichStudyDeck(
     ? ['كونسيڤ اساس', 'ڤراتورن اوتام', 'اڤليكاسي ڤريكتيکل', 'اناليسيس داتا', 'روموسن ڤڤريقساءن', 'ستراتيݢي', 'ميكانيزم', 'ديفينيسي اوتام', 'اوجين كفهمن', 'فوكوس']
     : ['Core Concept', 'Fundamental Rule', 'Practical Application', 'Data Analysis', 'Exam Takeaway', 'Execution Strategy', 'Mechanism', 'Key Definition', 'Self-Check', 'High-Yield Review'];
 
-  // 1. Expand flashcards up to at least 12 items
+  // 1. Expand flashcards up to at least targetCards items
   let sentIdx = 0;
-  while (flashcards.length < 12 && sentIdx < cleanSentences.length) {
+  while (flashcards.length < targetCards && sentIdx < cleanSentences.length) {
     const s = cleanSentences[sentIdx];
     const tag = tags[flashcards.length % tags.length];
     const cardId = `fc-rich-${Date.now()}-${flashcards.length + 1}`;
@@ -79,9 +81,9 @@ function enrichStudyDeck(
     if (sentIdx === 0 && cleanSentences.length < 5) break;
   }
 
-  // 2. Expand quiz questions up to at least 6 items
+  // 2. Expand quiz questions up to at least targetQuiz items
   let qSentIdx = 1;
-  while (quiz.length < 6 && qSentIdx < cleanSentences.length) {
+  while (quiz.length < targetQuiz && qSentIdx < cleanSentences.length) {
     const s = cleanSentences[qSentIdx];
     const qId = `qz-rich-${Date.now()}-${quiz.length + 1}`;
     const cleanAnswer = s.length > 90 ? s.slice(0, 90) + '...' : s;
@@ -149,7 +151,11 @@ function enrichStudyDeck(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, subject, sampleTranscript, model, language } = body;
+    const { title, subject, sampleTranscript, model, language, deckDepth = 'standard' } = body;
+
+    const isIntensive = deckDepth === 'intensive';
+    const targetCards = isIntensive ? 24 : 12;
+    const targetQuiz = isIntensive ? 12 : 6;
 
     const lectureTitle = title || 'Synthesized Lecture';
     const lectureSubject = subject || 'General Studies';
@@ -200,17 +206,17 @@ MANDATORY QUANTITY & RIGOR REQUIREMENTS:
 1. "summary": A comprehensive 3-5 sentence executive TL;DR in ${outputLanguage}.
 2. "markdownNotes": In-depth, exhaustive notes in Markdown with at least 5 structured sections (Definitions, Governing Principles, Step-by-Step Mechanisms, Real-World Examples/Applications, and High-Yield Exam Review). Use Markdown tables and LaTeX math where applicable.
 3. "mindmapMarkdown": A rich hierarchical mindmap with 4-6 main topic branches and 2-3 subnodes per branch.
-4. "flashcards": You MUST generate AT LEAST 10 TO 15 HIGH-YIELD FLASHCARDS!
+4. "flashcards": You MUST generate AT LEAST ${isIntensive ? '20 TO 25' : '10 TO 15'} HIGH-YIELD FLASHCARDS!
    - Each flashcard must test a distinct key term, rule, definition, formula, or concept from the content.
    - "front": Clear, focused question or prompt.
    - "back": Comprehensive, clear explanation.
    - "tag": Subtopic or category tag.
-   - DO NOT generate fewer than 10 flashcards!
-5. "quiz": You MUST generate AT LEAST 5 TO 8 MULTIPLE-CHOICE EXAM QUESTIONS!
+   - DO NOT generate fewer than ${isIntensive ? '20' : '10'} flashcards!
+5. "quiz": You MUST generate AT LEAST ${isIntensive ? '10 TO 12' : '5 TO 8'} MULTIPLE-CHOICE EXAM QUESTIONS!
    - Each question must have 4 distinct, plausible options.
    - "correctIndex": 0, 1, 2, or 3 corresponding to the correct answer.
    - "explanation": In-depth explanation of why the correct option is right and why the distractors are wrong.
-   - DO NOT generate fewer than 5 quiz questions!
+   - DO NOT generate fewer than ${isIntensive ? '10' : '5'} quiz questions!
 
 Generate a comprehensive JSON object matching this schema:
 {
@@ -261,7 +267,9 @@ Return ONLY raw valid JSON.`;
           (sampleTranscript || '') + '\n\n' + (parsed.markdownNotes || ''),
           outputLanguage,
           rawCards,
-          rawQuiz
+          rawQuiz,
+          targetCards,
+          targetQuiz
         );
 
         const completeLecture: LectureData = {
@@ -308,7 +316,9 @@ Return ONLY raw valid JSON.`;
         sampleTranscript,
         outputLanguage,
         [],
-        []
+        [],
+        targetCards,
+        targetQuiz
       );
 
       if (isArabic) {

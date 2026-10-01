@@ -9,19 +9,79 @@ import {
   Shuffle, 
   CheckCircle, 
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Plus,
+  Loader2,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface FlashcardsViewProps {
   cards: Flashcard[];
+  onAddCards?: (newCards: Flashcard[]) => void;
+  lectureTitle?: string;
+  notesText?: string;
 }
 
-export const FlashcardsView: React.FC<FlashcardsViewProps> = ({ cards: initialCards }) => {
+function extractAdditionalCards(
+  notesText: string,
+  existingCards: Flashcard[],
+  lectureTitle: string = 'Study Lecture',
+  count: number = 6
+): Flashcard[] {
+  const existingBacks = new Set(existingCards.map(c => c.back.toLowerCase()));
+  const cleanSentences = (notesText || '')
+    .replace(/[#*`_]/g, ' ')
+    .split(/(?<=[.?!])\s+/)
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(s => s.length > 25 && !s.startsWith('http') && !s.includes('data:image'));
+
+  const tags = ['In-Depth Concept', 'Exam Application', 'Key Formulation', 'Critical Insight', 'Deep Dive', 'Revision Focus', 'Analytical Detail'];
+  const newCards: Flashcard[] = [];
+
+  for (const s of cleanSentences) {
+    if (newCards.length >= count) break;
+    if (existingBacks.has(s.toLowerCase())) continue;
+
+    const tag = tags[newCards.length % tags.length];
+    newCards.push({
+      id: `fc-gen-${Date.now()}-${newCards.length + 1}`,
+      front: `What key insight or governing principle relates to: "${s.slice(0, 50)}..."?`,
+      back: s,
+      tag
+    });
+  }
+
+  // Fallback high-yield cards if text is sparse
+  while (newCards.length < count) {
+    const idx = newCards.length + 1;
+    newCards.push({
+      id: `fc-gen-${Date.now()}-${idx}`,
+      front: `Key application #${idx} for ${lectureTitle}?`,
+      back: `Master the foundational methods and verify analytical consistency in ${lectureTitle}.`,
+      tag: 'Exam Mastery'
+    });
+  }
+
+  return newCards;
+}
+
+export const FlashcardsView: React.FC<FlashcardsViewProps> = ({ 
+  cards: initialCards,
+  onAddCards,
+  lectureTitle,
+  notesText
+}) => {
   const [cards, setCards] = useState<Flashcard[]>(initialCards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [studiedCount, setStudiedCount] = useState<Set<string>>(new Set());
+  const [isGeneratingMore, setIsGeneratingMore] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newFront, setNewFront] = useState('');
+  const [newBack, setNewBack] = useState('');
+  const [newTag, setNewTag] = useState('Personal Study');
+  const [notification, setNotification] = useState<string | null>(null);
 
   // Reset when cards prop changes
   useEffect(() => {
@@ -30,6 +90,45 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({ cards: initialCa
     setIsFlipped(false);
     setStudiedCount(new Set());
   }, [initialCards]);
+
+  const handleGenerateMore = () => {
+    setIsGeneratingMore(true);
+    setTimeout(() => {
+      const generated = extractAdditionalCards(
+        notesText || currentCard?.back || '',
+        cards,
+        lectureTitle || 'Lecture',
+        6
+      );
+      const updated = [...cards, ...generated];
+      setCards(updated);
+      onAddCards?.(generated);
+      setIsGeneratingMore(false);
+      setNotification(`✨ +6 new flashcards generated! Total deck: ${updated.length} cards.`);
+      setTimeout(() => setNotification(null), 3500);
+    }, 500);
+  };
+
+  const handleAddCustomCard = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFront.trim() || !newBack.trim()) return;
+
+    const customCard: Flashcard = {
+      id: `fc-custom-${Date.now()}`,
+      front: newFront.trim(),
+      back: newBack.trim(),
+      tag: newTag.trim() || 'Custom Note'
+    };
+
+    const updated = [...cards, customCard];
+    setCards(updated);
+    onAddCards?.([customCard]);
+    setNewFront('');
+    setNewBack('');
+    setShowAddModal(false);
+    setNotification('✓ Custom flashcard added to deck!');
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const currentCard = cards[currentIndex] || cards[0];
 
@@ -211,12 +310,120 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({ cards: initialCa
         </button>
       </div>
 
+      {/* Deck Expansion Toolbar */}
+      <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
+        <button
+          onClick={handleGenerateMore}
+          disabled={isGeneratingMore}
+          className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 cursor-pointer disabled:opacity-50"
+        >
+          {isGeneratingMore ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+          )}
+          <span>{isGeneratingMore ? 'Generating...' : '+ Generate 6 More Cards'}</span>
+        </button>
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+        >
+          <Plus className="h-3.5 w-3.5 text-zinc-500" />
+          <span>+ Add Card</span>
+        </button>
+      </div>
+
+      {notification && (
+        <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-300 animate-in fade-in duration-200 text-center">
+          {notification}
+        </div>
+      )}
+
       {/* Keyboard hints */}
-      <div className="mt-6 flex items-center gap-4 text-[11px] text-zinc-400">
+      <div className="mt-5 flex items-center gap-4 text-[11px] text-zinc-400">
         <span>← Previous</span>
         <span>Space to Flip</span>
         <span>Next →</span>
       </div>
+
+      {/* Modal for adding custom flashcard */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                + Create Custom Flashcard
+              </h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="rounded-lg p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomCard} className="mt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Question / Front:
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={newFront}
+                  onChange={(e) => setNewFront(e.target.value)}
+                  placeholder="e.g. What is the formula for calculating maximum allowable risk per trade?"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 p-2.5 text-xs text-zinc-800 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Answer / Back:
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={newBack}
+                  onChange={(e) => setNewBack(e.target.value)}
+                  placeholder="e.g. Risk = (Account Equity * 1%) / Stop Loss Distance in pips or ticks."
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 p-2.5 text-xs text-zinc-800 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Category / Tag:
+                </label>
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="e.g. Risk Management, Formula, Key Concept"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 p-2 text-xs text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700"
+                >
+                  Add Card
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

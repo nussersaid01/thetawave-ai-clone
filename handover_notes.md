@@ -18,9 +18,16 @@
   - **Web Page Scraper**: Cleans incoming HTML, strips navigation/footer/scripts/styles, decodes HTML entities, and formats clean article text.
   - **Plain Text / Markdown / Code**: Instant client-side reading for `.txt`, `.md`, `.markdown`, `.csv`, and `.json`.
   - **Client-Side In-Browser Extraction for Large PDFs**: Completely solved the Vercel 4.5MB payload limit by extracting PDF text directly in the user's browser via pure web-standards `unpdf`. Uploading large multi-megabyte PDFs (e.g. 6.83 MB Rayner Teo trading book) now parses in 0.5s in-memory without network 413 "Request Entity Too Large" errors.
-  - **High-Yield Question Expansion (10-15 Flashcards & 5-8 Quizzes)**:
-    - Upgraded `/api/generate` prompt schema from previous minimal counts (which previously produced only 3 flashcards and 2 quiz questions) to strictly require 10-15 high-yield flashcards and 5-8 multiple-choice exam questions.
-    - Implemented `enrichStudyDeck` engine: automatically extracts diverse concepts across the entire document text to guarantee a minimum of 12 comprehensive flashcards and 6 exam-style questions with detailed explanations, even if the AI model returns a concise output or when in offline fallback mode.
+  - **Study Depth & Deck Size Customization (Standard vs Intensive Exam)**:
+    - Added user-configurable **Study Depth** selector in `UploadSourceModal.tsx`:
+      - ⚡ **Standard** (12 Flashcards, 6 Quiz) - *Optimized for fast synthesis (~15s)*
+      - 🎓 **Intensive Exam** (24 Flashcards, 12 Quiz) - *Comprehensive deep-dive across all subtopics*
+    - `/api/generate/route.ts` dynamically scales AI prompt quotas (up to 20-25 cards / 10-12 quiz) and configures `enrichStudyDeck` target counts.
+    - `buildIntelligentFallback` in `UploadSourceModal.tsx` also respects `deckDepth` for offline and fallback modes.
+  - **Dynamic Deck & Quiz Expansion (+ Generate More & Custom Cards)**:
+    - `FlashcardsView.tsx`: Added interactive **"+ Generate 6 More Cards"** button that extracts new non-duplicate concepts from the lecture notes on demand, plus **"+ Add Card"** modal for students to create personalized flashcards.
+    - `QuizView.tsx`: Added **"+ Generate 4 More Questions"** in the top stepper and final completion screen to expand practice test depth.
+    - `page.tsx`: Added `handleAddCardsToLecture` and `handleAddQuestionsToLecture` handlers to persist new items into the active study session.
   - **Interactive Extraction UI & Progress State**: Updated `UploadSourceModal.tsx` and `FileUploadModal.tsx` to display real-time status steps:
     - Step 1: "Parsing [file] in browser..." / "Fetching YouTube transcript & captions..."
     - Step 2: "Synthesizing AI study notes, mindmap, flashcards & quiz..."
