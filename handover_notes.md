@@ -1,5 +1,5 @@
 # 🔄 Persistent Handover State: ThetaWave AI Clone
-`[Generated: 2026-10-01 13:22]`
+`[Generated: 2026-10-01 14:41]`
 
 ## 1. System Status & Architecture
 - **Workspace Architecture**: Hybrid Model (Local SSD working directory + Clean Google Drive cloud mirror).
@@ -29,7 +29,32 @@
     - Sidebar folders dropdown dynamically computes real-time note counts per folder and routes directly into the folder.
     - `AllNotesView.tsx` updated with folder badges and multi-category filtering.
 
-## 3. Environment Shifts & Dependencies
-- Node.js: v24.18.0, npm: 11.16.0
-- Live Dev Server: Active on `http://localhost:3000` (Verified via Playwright headless & visual screenshots).
-- All tests passing with 0 console errors and 0 warnings.
+## 3. Universal AI Provider & OpenRouter Integration
+- **Key Auto-Detection**:
+  - Configured `src/lib/aiProvider.ts` to intelligently auto-detect key patterns.
+  - Detects `sk-or-v1-` prefixes (OpenRouter) even if passed under `GEMINI_API_KEY`, avoiding provider mismatch crashes.
+  - Included mandatory OpenRouter headers (`HTTP-Referer: https://thetawave.ai`, `X-Title: ThetaWave AI`).
+  - Default Model: `deepseek/deepseek-chat` (DeepSeek-V3, blazing fast, smart, ~$0.00014/1k tokens).
+  - Multi-tier model fallback: `deepseek/deepseek-chat` -> `meta-llama/llama-3.3-70b-instruct:free` -> local high-fidelity synthesis.
+- **Local Credentials File**:
+  - `.env.local` initialized with user's verified OpenRouter key and model configuration.
+  - Repository template `.env.example` committed and tracked cleanly without leaking secrets.
+
+## 4. GitHub Remote Repository & Version Control
+- **GitHub Target**: `https://github.com/nussersaid01/thetawave-ai-clone`
+- **Remote Configuration**: Added remote `origin` pointing to `https://github.com/nussersaid01/thetawave-ai-clone.git`.
+- **Branch**: `main` tracking `origin/main`.
+- **Commits Pushed**:
+  - Initial clone baseline.
+  - V3 Feature additions (OLED Dark mode, Study Folders, ThetaWave Pro checkout).
+  - Universal AI Provider with OpenRouter DeepSeek-V3 routing and clean `.env.example`.
+- **Status**: 100% synchronized with GitHub remote.
+
+## 5. WIP & Next Steps (To Resume Tomorrow)
+- **Vercel Deployment**:
+  - Repository is pushed and live on GitHub: `https://github.com/nussersaid01/thetawave-ai-clone`.
+  - Next session action: Either complete the CLI device login (`npx vercel login`) or connect the repo directly on the Vercel dashboard:
+    `https://vercel.com/new/import?s=https://github.com/nussersaid01/thetawave-ai-clone`.
+  - Ensure Environment Variable `OPENROUTER_API_KEY` is added to the Vercel project settings.
+- **Local Dev Server**:
+  - Can be restarted anytime with `npm run dev` at `http://localhost:3000`.
