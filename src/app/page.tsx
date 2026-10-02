@@ -67,7 +67,49 @@ export default function Home() {
     if (savedLang === 'Bahasa Melayu') {
       setLectures(sampleLecturesMalay);
     }
+
+    // Hydrate persistent lectures & folders
+    try {
+      const savedLectures = localStorage.getItem('thetawave_lectures');
+      if (savedLectures) {
+        const parsed = JSON.parse(savedLectures);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLectures(parsed);
+        }
+      }
+      const savedFolders = localStorage.getItem('thetawave_folders');
+      if (savedFolders) {
+        const parsedFld = JSON.parse(savedFolders);
+        if (Array.isArray(parsedFld) && parsedFld.length > 0) {
+          setFolders(parsedFld);
+        }
+      }
+    } catch (e) {
+      console.warn('LocalStorage hydration error:', e);
+    }
   }, []);
+
+  // Persist lectures whenever updated
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && lectures && lectures.length > 0) {
+        localStorage.setItem('thetawave_lectures', JSON.stringify(lectures));
+      }
+    } catch (e) {
+      console.warn('Failed to save lectures to localStorage:', e);
+    }
+  }, [lectures]);
+
+  // Persist folders whenever updated
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && folders && folders.length > 0) {
+        localStorage.setItem('thetawave_folders', JSON.stringify(folders));
+      }
+    } catch (e) {
+      console.warn('Failed to save folders to localStorage:', e);
+    }
+  }, [folders]);
 
   const handleLanguageChange = (newLang: string) => {
     if (newLang === 'Bahasa Melayu') {
@@ -131,6 +173,16 @@ export default function Home() {
       prev.map((l) =>
         l.id === lectureId
           ? { ...l, flashcards: [...l.flashcards, ...newCards] }
+          : l
+      )
+    );
+  };
+
+  const handleUpdateCardsInLecture = (lectureId: string, updatedCards: Flashcard[]) => {
+    setLectures((prev) =>
+      prev.map((l) =>
+        l.id === lectureId
+          ? { ...l, flashcards: updatedCards }
           : l
       )
     );
@@ -342,6 +394,7 @@ export default function Home() {
                   lectureTitle={currentLecture.title}
                   notesText={currentLecture.markdownNotes}
                   onAddCards={(newCards) => handleAddCardsToLecture(currentLecture.id, newCards)}
+                  onUpdateCards={(updatedCards) => handleUpdateCardsInLecture(currentLecture.id, updatedCards)}
                 />
               )}
 

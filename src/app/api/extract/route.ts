@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { extractText } from 'unpdf';
 import mammoth from 'mammoth';
 import { YoutubeTranscript } from 'youtube-transcript';
+import { extractGoogleDriveId, resolveGoogleDriveSource } from '@/lib/googleDriveResolver';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -154,11 +155,86 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // B. Link / URL
+    // B. Link / URL or File ID
     if (url && typeof url === 'string') {
       const cleanUrl = url.trim();
 
-      // Check if YouTube link
+      // 1. Check if Google Drive Link or File ID
+      const gdriveId = extractGoogleDriveId(cleanUrl);
+      if (gdriveId) {
+        try {
+          const gdriveRes = await resolveGoogleDriveSource(cleanUrl);
+          if (gdriveRes.success) {
+            if (gdriveRes.isFolder) {
+              return NextResponse.json({
+                title: gdriveRes.fileName || 'Google Drive Folder',
+                type: 'google_drive_folder',
+                googleDriveId: gdriveRes.fileId,
+                googleDriveUrl: gdriveRes.cloudUrl,
+                folderChildren: gdriveRes.folderChildren || []
+              });
+            }
+
+            if (gdriveRes.fileBuffer) {
+              const fileExt = (gdriveRes.fileName || '').split('.').pop()?.toLowerCase();
+              if (fileExt === 'pdf' || !fileExt) {
+                const uint8 = new Uint8Array(gdriveRes.fileBuffer);
+                const { text, totalPages } = await extractText(uint8, { mergePages: true });
+                const rawPdfText = text;
+                const extractedText = (typeof rawPdfText === 'string' ? rawPdfText : '')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+
+                if (!extractedText || extractedText.length < 10) {
+                  return NextResponse.json({
+                    error: 'Google Drive PDF contains no readable text or is image-only/scanned.'
+                  }, { status: 422 });
+                }
+
+                return NextResponse.json({
+                  title: gdriveRes.fileName?.replace(/\.[^/.]+$/, '') || 'Google Drive Document',
+                  text: extractedText.slice(0, 50000),
+                  totalPages,
+                  type: 'google_drive',
+                  googleDriveId: gdriveRes.fileId,
+                  googleDriveUrl: gdriveRes.cloudUrl,
+                  fileName: gdriveRes.fileName
+                });
+              } else if (fileExt === 'docx') {
+                const { value } = await mammoth.extractRawText({ buffer: gdriveRes.fileBuffer });
+                return NextResponse.json({
+                  title: gdriveRes.fileName?.replace(/\.[^/.]+$/, '') || 'Google Drive Document',
+                  text: value.slice(0, 50000),
+                  type: 'google_drive',
+                  googleDriveId: gdriveRes.fileId,
+                  googleDriveUrl: gdriveRes.cloudUrl,
+                  fileName: gdriveRes.fileName
+                });
+              } else if (['txt', 'md', 'json', 'csv'].includes(fileExt)) {
+                return NextResponse.json({
+                  title: gdriveRes.fileName?.replace(/\.[^/.]+$/, '') || 'Google Drive Document',
+                  text: gdriveRes.fileBuffer.toString('utf-8').slice(0, 50000),
+                  type: 'google_drive',
+                  googleDriveId: gdriveRes.fileId,
+                  googleDriveUrl: gdriveRes.cloudUrl,
+                  fileName: gdriveRes.fileName
+                });
+              }
+            }
+          } else {
+            return NextResponse.json({
+              error: gdriveRes.error || `Could not find file on Google Drive for ID ${gdriveId}. Ensure Google Drive for Desktop is running.`
+            }, { status: 404 });
+          }
+        } catch (gdriveErr: unknown) {
+          const msg = gdriveErr instanceof Error ? gdriveErr.message : String(gdriveErr);
+          return NextResponse.json({
+            error: `Error resolving Google Drive file: ${msg}`
+          }, { status: 500 });
+        }
+      }
+
+      // 2. Check if YouTube link
       const videoId = extractYouTubeVideoId(cleanUrl);
       if (videoId) {
         let videoTitle = `YouTube Video (${videoId})`;

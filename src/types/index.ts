@@ -12,6 +12,7 @@ export interface QuizQuestion {
   options: string[];
   correctIndex: number;
   explanation: string;
+  distractorExplanations?: string[];
 }
 
 export interface LectureData {
@@ -26,6 +27,10 @@ export interface LectureData {
   mindmapMarkdown: string;
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
+  sourceType?: 'google_drive' | 'pdf' | 'youtube' | 'web' | 'text' | 'audio';
+  googleDriveId?: string;
+  googleDriveUrl?: string;
+  sourceFileName?: string;
 }
 
 export interface ChatMessage {

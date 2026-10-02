@@ -9,7 +9,13 @@ import {
   Check,
   AlertTriangle,
   FileCheck2,
-  FileX
+  FileX,
+  CheckCircle2,
+  Folder,
+  ExternalLink,
+  Link2,
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { LectureData } from '@/types';
 
@@ -227,14 +233,18 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
   onClose,
   onLectureCreated
 }) => {
+  const [activeSourceTab, setActiveSourceTab] = useState<'gdrive' | 'file' | 'link'>('gdrive');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedLink, setPastedLink] = useState('');
+  const [gdriveInput, setGdriveInput] = useState('');
   const [outputLanguage, setOutputLanguage] = useState('English (US)');
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
+  const [currentStep, setCurrentStep] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deckDepth, setDeckDepth] = useState<'standard' | 'intensive'>('standard');
+  const [folderFiles, setFolderFiles] = useState<Array<{ id: string; name: string; size: number }>>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -264,29 +274,64 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
     }
   };
 
-  const handleCreateNote = async () => {
+  const handleCreateNoteWithId = async (directId?: string, directTitle?: string) => {
     setErrorMessage(null);
     setIsProcessing(true);
-    setProcessingStatus('Starting extraction...');
+    setCurrentStep(1);
+    setProcessingStatus('Starting document extraction & structure parsing...');
 
     let extractedText = '';
-    let determinedTitle = '';
+    let determinedTitle = directTitle || '';
     let determinedSubject = 'Uploaded Source';
+    let determinedGoogleDriveId = directId || '';
+    let determinedGoogleDriveUrl = directId ? `https://drive.google.com/file/d/${directId}/view` : '';
 
     try {
       // 1. EXTRACTION PHASE
-      if (selectedFile) {
+      const targetGdrive = directId || (activeSourceTab === 'gdrive' && gdriveInput.trim() ? gdriveInput.trim() : '');
+
+      if (targetGdrive) {
+        setProcessingStatus(`Resolving Google Drive source...`);
+        const extractRes = await fetch('/api/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: targetGdrive })
+        });
+
+        if (!extractRes.ok) {
+          const errData = await extractRes.json().catch(() => ({}));
+          throw new Error(errData.error || `Failed to extract from Google Drive (HTTP ${extractRes.status})`);
+        }
+
+        const extractData = await extractRes.json();
+
+        if (extractData.type === 'google_drive_folder') {
+          setFolderFiles(extractData.folderChildren || []);
+          setProcessingStatus(`Found folder with ${(extractData.folderChildren || []).length} files. Please select a file below.`);
+          setIsProcessing(false);
+          setCurrentStep(0);
+          return;
+        }
+
+        if (!extractData.text) {
+          throw new Error(extractData.error || 'Could not extract text from the Google Drive file.');
+        }
+
+        extractedText = extractData.text;
+        determinedTitle = extractData.title || determinedTitle || 'Google Drive Lecture';
+        determinedSubject = 'Google Drive Lecture';
+        determinedGoogleDriveId = extractData.googleDriveId || targetGdrive;
+        determinedGoogleDriveUrl = extractData.googleDriveUrl || `https://drive.google.com/file/d/${determinedGoogleDriveId}/view`;
+      } else if (activeSourceTab === 'file' && selectedFile) {
         const fileName = selectedFile.name;
         determinedTitle = fileName.replace(/\.[^/.]+$/, '');
         setProcessingStatus(`Extracting text from ${fileName}...`);
 
         const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
 
-        // If plain text file, read directly in browser
         if (['txt', 'md', 'markdown', 'csv', 'json'].includes(fileExt) || selectedFile.type.startsWith('text/')) {
           extractedText = await selectedFile.text();
         } else if (fileExt === 'pdf') {
-          // 1. Try client-side extraction first (supports large PDFs > 4.5 MB without Vercel payload limits)
           setProcessingStatus(`Parsing ${fileName} in browser...`);
           try {
             const { extractText } = await import('unpdf');
@@ -303,7 +348,6 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             console.warn('Client-side PDF extraction skipped, falling back to server extraction:', clientErr);
           }
 
-          // 2. If client extraction didn't yield text, fallback to /api/extract
           if (!extractedText) {
             setProcessingStatus(`Extracting ${fileName} on server...`);
             const formData = new FormData();
@@ -334,7 +378,6 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
             determinedSubject = `${extractData.type?.toUpperCase() || 'DOCUMENT'} Lecture`;
           }
         } else {
-          // Send DOCX, etc. to /api/extract
           const formData = new FormData();
           formData.append('file', selectedFile);
 
@@ -350,9 +393,6 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
               errText = errJson.error;
             } catch {
               errText = await extractRes.text().catch(() => '');
-            }
-            if (extractRes.status === 413 || errText.includes('Entity Too Large')) {
-              throw new Error(`File is too large (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB exceeds 4.5 MB).`);
             }
             throw new Error(errText || `Extraction failed with HTTP ${extractRes.status}`);
           }
@@ -392,15 +432,26 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           }
 
           const extractData = await extractRes.json();
+          if (extractData.type === 'google_drive_folder') {
+            setFolderFiles(extractData.folderChildren || []);
+            setProcessingStatus(`Found folder with ${(extractData.folderChildren || []).length} files. Please select a file below.`);
+            setIsProcessing(false);
+            setCurrentStep(0);
+            return;
+          }
+
           if (!extractData.text) {
             throw new Error(extractData.error || 'Failed to extract content from the provided URL');
           }
 
           extractedText = extractData.text;
           determinedTitle = extractData.title || (isYouTube ? 'YouTube Lecture' : 'Web Article');
-          determinedSubject = isYouTube ? 'YouTube Lecture' : 'Web Resource';
+          determinedSubject = isYouTube ? 'YouTube Lecture' : extractData.type === 'google_drive' ? 'Google Drive Lecture' : 'Web Resource';
+          if (extractData.googleDriveId) {
+            determinedGoogleDriveId = extractData.googleDriveId;
+            determinedGoogleDriveUrl = extractData.googleDriveUrl || '';
+          }
         } else {
-          // Direct pasted text
           setProcessingStatus('Processing pasted text...');
           extractedText = trimmed;
           determinedTitle = trimmed.split('\n')[0].slice(0, 45).trim() || 'Custom Study Notes';
@@ -412,8 +463,18 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
         throw new Error('The source contains insufficient readable text for study note generation.');
       }
 
-      // 2. SYNTHESIS PHASE
-      setProcessingStatus('Synthesizing AI study notes, mindmap, flashcards & quiz...');
+      // PROGRESSIVE STEPPER TRANSITIONS
+      setCurrentStep(2);
+      setProcessingStatus('Extracting key concepts, formulas & definitions...');
+      await new Promise(r => setTimeout(r, 400));
+
+      setCurrentStep(3);
+      setProcessingStatus('Building logical hierarchies & mindmap outline...');
+      await new Promise(r => setTimeout(r, 400));
+
+      setCurrentStep(4);
+      setProcessingStatus('Synthesizing structured notes, flashcards & exam quiz...');
+
       const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('thetawave_ai_model') : null;
 
       const res = await fetch('/api/generate', {
@@ -431,13 +492,20 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
 
       if (!res.ok) throw new Error('AI generation failed');
       const data: LectureData = await res.json();
+      
+      if (determinedGoogleDriveId) {
+        data.googleDriveId = determinedGoogleDriveId;
+        data.googleDriveUrl = determinedGoogleDriveUrl || `https://drive.google.com/file/d/${determinedGoogleDriveId}/view`;
+        data.sourceType = 'google_drive';
+        data.sourceFileName = determinedTitle;
+      }
+
       onLectureCreated(data);
       onClose();
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.warn('Note creation error:', errMsg);
 
-      // If we have extracted text, provide high-fidelity note directly from real content!
       if (extractedText && extractedText.trim().length >= 20) {
         const fallbackNote = buildIntelligentFallback(
           determinedTitle || 'Uploaded Study Material',
@@ -446,6 +514,12 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           determinedSubject,
           deckDepth
         );
+        if (determinedGoogleDriveId) {
+          fallbackNote.googleDriveId = determinedGoogleDriveId;
+          fallbackNote.googleDriveUrl = determinedGoogleDriveUrl || `https://drive.google.com/file/d/${determinedGoogleDriveId}/view`;
+          fallbackNote.sourceType = 'google_drive';
+          fallbackNote.sourceFileName = determinedTitle;
+        }
         onLectureCreated(fallbackNote);
         onClose();
       } else {
@@ -454,8 +528,11 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
     } finally {
       setIsProcessing(false);
       setProcessingStatus('');
+      setCurrentStep(0);
     }
   };
+
+  const handleCreateNote = () => handleCreateNoteWithId();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -478,52 +555,162 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           Real document parsing & YouTube transcript extraction
         </span>
 
-        {/* 1. Large Drop Area */}
-        <label className={`mt-3 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-8 px-6 text-center cursor-pointer transition ${
-          selectedFile 
-            ? 'border-emerald-400 bg-emerald-50/20 dark:border-emerald-500 dark:bg-emerald-950/20' 
-            : 'border-zinc-200 bg-[#fafafa] hover:border-indigo-400 hover:bg-indigo-50/20 dark:border-zinc-800 dark:bg-zinc-950/60 dark:hover:border-indigo-500'
-        }`}>
-          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl mb-3 shadow-inner ${
-            selectedFile ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300'
-          }`}>
-            {selectedFile ? <FileCheck2 className="h-6 w-6" /> : <UploadCloud className="h-6 w-6" />}
-          </div>
-          
-          <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-            {selectedFile ? selectedFile.name : 'Drop PDF, DOCX, TXT or click to browse'}
-          </span>
-          <span className="mt-1 text-xs text-zinc-400">
-            {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Ready for parsing` : 'Supports PDF, Word (.docx), Plain Text (.txt, .md)'}
-          </span>
-          
-          <input 
-            type="file" 
-            onChange={handleFileDrop}
-            accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json" 
-            className="hidden" 
-          />
-        </label>
+        {/* Source Mode Tabs */}
+        <div className="mt-3 flex items-center gap-1 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-800/80">
+          <button
+            type="button"
+            onClick={() => setActiveSourceTab('gdrive')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-semibold transition cursor-pointer ${
+              activeSourceTab === 'gdrive'
+                ? 'bg-white text-indigo-700 shadow-sm dark:bg-zinc-900 dark:text-indigo-300 font-bold'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <Folder className="h-3.5 w-3.5" />
+            <span>Google Drive</span>
+          </button>
 
-        {/* 2. Paste Link or Text Area */}
-        <div className="mt-4">
-          <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-            Or paste YouTube link / Web URL / Free text
-          </label>
-          <div className="relative rounded-2xl border border-zinc-200 bg-[#fafafa] p-3 focus-within:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950/60">
-            <textarea
-              rows={3}
-              value={pastedLink}
-              disabled={isProcessing}
-              onChange={(e) => {
-                setPastedLink(e.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="Paste YouTube video link (e.g. https://youtube.com/watch?v=...), web page URL, or lecture notes..."
-              className="w-full bg-transparent text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none dark:text-zinc-200 resize-none leading-relaxed"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setActiveSourceTab('file')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-semibold transition cursor-pointer ${
+              activeSourceTab === 'file'
+                ? 'bg-white text-indigo-700 shadow-sm dark:bg-zinc-900 dark:text-indigo-300 font-bold'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>Upload File</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSourceTab('link')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-semibold transition cursor-pointer ${
+              activeSourceTab === 'link'
+                ? 'bg-white text-indigo-700 shadow-sm dark:bg-zinc-900 dark:text-indigo-300 font-bold'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            <span>YouTube / Web</span>
+          </button>
         </div>
+
+        {/* TAB 1: Google Drive */}
+        {activeSourceTab === 'gdrive' && (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/60 to-purple-50/40 p-4 dark:border-indigo-900/60 dark:from-indigo-950/40 dark:to-zinc-900">
+              <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+                Google Drive Link or File ID
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={gdriveInput}
+                  disabled={isProcessing}
+                  onChange={(e) => {
+                    setGdriveInput(e.target.value);
+                    setErrorMessage(null);
+                  }}
+                  placeholder="Paste link: https://drive.google.com/open?id=1gT1XX... or file ID"
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs text-zinc-900 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 font-mono shadow-sm"
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-500 leading-relaxed">
+                💡 <strong>Zero Duplicate Uploads:</strong> Pulls directly from your connected Google Drive without re-uploading large PDF files across computers.
+              </p>
+            </div>
+
+            {/* Folder Children List (if folder ID provided) */}
+            {folderFiles.length > 0 && (
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3.5 dark:border-zinc-800 dark:bg-zinc-950/60">
+                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block mb-2">
+                  Files detected in this Google Drive folder:
+                </span>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {folderFiles.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex items-center justify-between rounded-xl bg-white p-2.5 border border-zinc-200/80 dark:border-zinc-800 dark:bg-zinc-900"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText className="h-4 w-4 text-indigo-500 shrink-0" />
+                        <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                          {f.name}
+                        </span>
+                        <span className="text-[10px] text-zinc-400">
+                          ({(f.size / 1024 / 1024).toFixed(1)} MB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGdriveInput(f.id);
+                          handleCreateNoteWithId(f.id, f.name);
+                        }}
+                        className="rounded-lg bg-indigo-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-indigo-700 transition cursor-pointer"
+                      >
+                        Synthesize
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: Upload File (PDF / DOCX) */}
+        {activeSourceTab === 'file' && (
+          <label className={`mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-8 px-6 text-center cursor-pointer transition ${
+            selectedFile 
+              ? 'border-emerald-400 bg-emerald-50/20 dark:border-emerald-500 dark:bg-emerald-950/20' 
+              : 'border-zinc-200 bg-[#fafafa] hover:border-indigo-400 hover:bg-indigo-50/20 dark:border-zinc-800 dark:bg-zinc-950/60 dark:hover:border-indigo-500'
+          }`}>
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl mb-3 shadow-inner ${
+              selectedFile ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300'
+            }`}>
+              {selectedFile ? <FileCheck2 className="h-6 w-6" /> : <UploadCloud className="h-6 w-6" />}
+            </div>
+            
+            <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+              {selectedFile ? selectedFile.name : 'Drop PDF, DOCX, TXT or click to browse'}
+            </span>
+            <span className="mt-1 text-xs text-zinc-400">
+              {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Ready for parsing` : 'Supports PDF, Word (.docx), Plain Text (.txt, .md)'}
+            </span>
+            
+            <input 
+              type="file" 
+              onChange={handleFileDrop}
+              accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json" 
+              className="hidden" 
+            />
+          </label>
+        )}
+
+        {/* TAB 3: YouTube / Web */}
+        {activeSourceTab === 'link' && (
+          <div className="mt-4">
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Paste YouTube video link, web article URL, or raw text
+            </label>
+            <div className="relative rounded-2xl border border-zinc-200 bg-[#fafafa] p-3 focus-within:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950/60">
+              <textarea
+                rows={3}
+                value={pastedLink}
+                disabled={isProcessing}
+                onChange={(e) => {
+                  setPastedLink(e.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="Paste YouTube link (https://youtube.com/watch?v=...), web page URL, or lecture notes..."
+                className="w-full bg-transparent text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none dark:text-zinc-200 resize-none leading-relaxed"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Error Notification Banner */}
         {errorMessage && (
@@ -536,11 +723,33 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           </div>
         )}
 
-        {/* Progress Notification Banner during processing */}
+        {/* 4-Step Progressive Stepper (ThetaWave UX) */}
         {isProcessing && (
-          <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 p-3 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:border-indigo-800/80 dark:text-indigo-200 animate-pulse">
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600 dark:text-indigo-400" />
-            <span className="font-semibold">{processingStatus}</span>
+          <div className="mt-4 rounded-2xl border border-indigo-200/80 bg-gradient-to-b from-indigo-50/70 to-white p-4 dark:border-indigo-900/60 dark:from-indigo-950/40 dark:to-zinc-900">
+            <div className="flex items-center gap-2.5 mb-3">
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" />
+              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                {processingStatus || 'Synthesizing Study Suite...'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className={`flex items-center gap-2 text-[11px] ${currentStep >= 1 ? 'text-zinc-800 dark:text-zinc-200 font-semibold' : 'text-zinc-400'}`}>
+                {currentStep > 1 ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <div className="h-3 w-3 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />}
+                <span>Step 1: Parsed content text & structures</span>
+              </div>
+              <div className={`flex items-center gap-2 text-[11px] ${currentStep >= 2 ? 'text-zinc-800 dark:text-zinc-200 font-semibold' : 'text-zinc-400'}`}>
+                {currentStep > 2 ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : currentStep === 2 ? <div className="h-3 w-3 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" /> : <div className="h-3 w-3 rounded-full border border-zinc-300 dark:border-zinc-700 shrink-0" />}
+                <span>Step 2: Extracted key entities & formulas</span>
+              </div>
+              <div className={`flex items-center gap-2 text-[11px] ${currentStep >= 3 ? 'text-zinc-800 dark:text-zinc-200 font-semibold' : 'text-zinc-400'}`}>
+                {currentStep > 3 ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : currentStep === 3 ? <div className="h-3 w-3 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" /> : <div className="h-3 w-3 rounded-full border border-zinc-300 dark:border-zinc-700 shrink-0" />}
+                <span>Step 3: Built logical hierarchies & mindmap outline</span>
+              </div>
+              <div className={`flex items-center gap-2 text-[11px] ${currentStep >= 4 ? 'text-zinc-800 dark:text-zinc-200 font-semibold' : 'text-zinc-400'}`}>
+                {currentStep >= 4 ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <div className="h-3 w-3 rounded-full border border-zinc-300 dark:border-zinc-700 shrink-0" />}
+                <span>Step 4: Synthesized final structured notes & assessments</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -639,7 +848,12 @@ export const UploadSourceModal: React.FC<UploadSourceModalProps> = ({
           {/* Create Note Action Button */}
           <button
             onClick={handleCreateNote}
-            disabled={(!selectedFile && !pastedLink.trim()) || isProcessing}
+            disabled={
+              isProcessing ||
+              (activeSourceTab === 'gdrive' && !gdriveInput.trim()) ||
+              (activeSourceTab === 'file' && !selectedFile) ||
+              (activeSourceTab === 'link' && !pastedLink.trim())
+            }
             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#9080fc] to-[#7c69f8] px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:opacity-95 disabled:opacity-40 transition-all cursor-pointer"
           >
             {isProcessing ? (
